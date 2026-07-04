@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rebound 2026 — Gym Tracker</title>
+<style>
+  :root{
+    --bg:#14161A;
+    --surface:#1C1F26;
+    --surface-2:#232733;
+    --surface-3:#2A2E38;
+    --border:#2E3340;
+    --text:#F2F3F5;
+    --text-dim:#9AA0AC;
+    --text-faint:#666C79;
+    --up:#22C55E;
+    --down:#F87171;
+    --same:#8B92A0;
+    --legs:#4ADE80;
+    --push:#60A5FA;
+    --pull:#FB923C;
+    --arms:#C084FC;
+    --mono: 'SF Mono','Roboto Mono','SFMono-Regular',Menlo,Consolas,monospace;
+    --ui: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0; background:var(--bg); color:var(--text); font-family:var(--ui);
+    -webkit-font-smoothing:antialiased; overscroll-behavior-y:none;}
+  body{padding-bottom:env(safe-area-inset-bottom);}
+  #app{max-width:560px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column;}
+  a{color:inherit;}
+  button{font-family:inherit; -webkit-appearance:none; appearance:none; border:none; background:none; color:inherit; cursor:pointer;}
+  input{font-family:var(--mono); -webkit-appearance:none; appearance:none;}
+  input:focus-visible, button:focus-visible, summary:focus-visible{outline:2px solid #fff; outline-offset:2px;}
+
+  /* ---------- top bar ---------- */
+  .topbar{
+    position:sticky; top:0; z-index:20;
+    display:flex; align-items:center; gap:10px;
+    padding:14px 16px calc(14px + env(safe-area-inset-top)*0) 16px;
+    padding-top:calc(14px + env(safe-area-inset-top));
+    background:var(--bg); border-bottom:1px solid var(--border);
+  }
+  .topbar .back{font-size:22px; padding:4px 8px; margin-left:-8px; color:var(--text-dim);}
+  .topbar h1{font-size:17px; font-weight:700; margin:0; flex:1; letter-spacing:-0.01em;}
+  .topbar .accent-bar{position:absolute; left:0; right:0; bottom:-1px; height:3px;}
+  .icon-btn{font-size:20px; padding:6px 8px; color:var(--text-dim);}
+
+  /* ---------- status row (stopwatch + rest timer) ---------- */
+  .status-row{display:flex; align-items:center; gap:10px; padding:10px 16px; border-bottom:1px solid var(--border); background:var(--surface);}
+  .stopwatch{font-family:var(--mono); font-size:13px; color:var(--text-dim); display:flex; align-items:center; gap:5px; flex-shrink:0;}
+  .stopwatch b{color:var(--text); font-size:14px;}
+  .rest-idle{margin-left:auto; font-family:var(--mono); font-size:12.5px; font-weight:700; color:var(--text-dim); background:var(--surface-2); border:1px solid var(--border); padding:6px 12px; border-radius:99px;}
+  .rest-active{margin-left:auto; display:flex; align-items:center; gap:6px; background:var(--surface-2); border:1px solid var(--border); border-radius:99px; padding:5px 6px 5px 12px;}
+  .rest-active.done{background:#2A1F14; border-color:#F59E0B;}
+  .rest-time{font-family:var(--mono); font-weight:800; font-size:14px; min-width:44px;}
+  .rest-btn{font-family:var(--mono); font-size:11px; font-weight:700; color:var(--text-dim); background:var(--surface-3); padding:5px 8px; border-radius:99px;}
+  .rest-close{font-size:14px; color:var(--text-faint); padding:4px 6px;}
+  .hold-btn{font-family:var(--mono); font-size:11px; font-weight:700; color:var(--bg); background:var(--text-dim); padding:4px 10px; border-radius:99px; margin-top:6px; display:inline-block;}
+
+  .tempo-info{margin:10px 16px 0; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:9px 14px;}
+  .tempo-info summary{font-size:12.5px; color:var(--text-dim); font-weight:600; cursor:pointer; list-style:none;}
+  .tempo-info summary::-webkit-details-marker{display:none;}
+  .tempo-info p{font-size:12.5px; color:var(--text-dim); line-height:1.55; margin:8px 0 2px;}
+  .tempo-info code{font-family:var(--mono); background:var(--surface-2); padding:1px 5px; border-radius:5px; color:var(--text);}
+
+  .discard-x{font-size:13px; color:var(--bg); background:#F59E9E; width:16px; height:16px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; margin-left:6px; line-height:1;}
+  .export-link{display:inline-block; margin-top:10px; font-size:12.5px; color:var(--text-dim); text-decoration:underline;}
+
+  .modal-overlay{position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:100; display:flex; align-items:center; justify-content:center; padding:24px;}
+  .modal-card{background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:20px; max-width:360px; width:100%; box-shadow:0 20px 60px rgba(0,0,0,.5);}
+  .modal-msg{font-size:14.5px; line-height:1.5; margin-bottom:18px;}
+  .modal-actions{display:flex; gap:10px;}
+  .modal-btn{flex:1; padding:12px; border-radius:10px; font-size:14px; font-weight:700; text-align:center;}
+  .modal-cancel{background:var(--surface-2); color:var(--text);}
+  .modal-confirm{background:#F87171; color:#1A0E0E;}
+
+  /* ---------- home ---------- */
+  .home-wrap{padding:18px 16px 40px;}
+  .brand{margin:6px 0 4px;}
+  .brand .kicker{font-family:var(--mono); font-size:11px; letter-spacing:.14em; color:var(--text-faint); text-transform:uppercase;}
+  .brand h1{font-size:26px; margin:4px 0 0; font-weight:800; letter-spacing:-0.02em;}
+  .rotation-strip{display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin:14px 0 4px; font-size:12.5px; color:var(--text-dim);}
+  .rotation-chip{padding:3px 9px; border-radius:99px; background:var(--surface-2); border:1px solid var(--border); font-weight:600;}
+  .rotation-arrow{color:var(--text-faint);}
+  details.info{margin-top:14px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:10px 14px;}
+  details.info summary{font-size:13px; color:var(--text-dim); font-weight:600; cursor:pointer; list-style:none;}
+  details.info summary::-webkit-details-marker{display:none;}
+  details.info p{font-size:13px; color:var(--text-dim); line-height:1.5; margin:8px 0 2px;}
+
+  .session-grid{display:flex; flex-direction:column; gap:12px; margin-top:20px;}
+  .session-card{
+    display:flex; align-items:center; gap:14px;
+    padding:18px 16px; border-radius:16px; border:1px solid var(--border);
+    background:var(--surface); position:relative; overflow:hidden; text-align:left;
+    min-height:78px;
+  }
+  .session-card::before{content:""; position:absolute; left:0; top:0; bottom:0; width:5px;}
+  .session-card .emoji{font-size:28px; width:40px; text-align:center;}
+  .session-card .meta{flex:1; min-width:0;}
+  .session-card .name{font-size:17px; font-weight:800; letter-spacing:-0.01em;}
+  .session-card .sub{font-size:12.5px; color:var(--text-dim); margin-top:2px;}
+  .session-card .chev{font-size:20px; color:var(--text-faint);}
+  .draft-badge{
+    font-family:var(--mono); font-size:10.5px; font-weight:700; color:var(--bg);
+    background:#FBBF24; padding:2px 7px; border-radius:99px; margin-left:6px; letter-spacing:.02em;
+  }
+
+  /* ---------- session screen ---------- */
+  .session-sub{padding:10px 16px 14px; font-size:12.5px; color:var(--text-dim); border-bottom:1px solid var(--border); font-style:italic;}
+  .ex-list{padding:14px 16px 130px; display:flex; flex-direction:column; gap:12px;}
+  .ex-card{background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden;}
+  .ex-head{padding:13px 14px 10px;}
+  .ex-name{font-size:15.5px; font-weight:700; letter-spacing:-0.01em; display:flex; align-items:flex-start; gap:6px;}
+  .ex-flag{font-size:12px; font-weight:700; padding:1px 7px; border-radius:6px; white-space:nowrap; margin-left:auto;}
+  .flag-pause{background:#3A2A2A; color:#F59E9E;}
+  .flag-star{background:#3A3620; color:#FBD98A;}
+  .ex-presc{font-family:var(--mono); font-size:11.5px; color:var(--text-faint); margin-top:4px;}
+  .ex-note{margin-top:8px;}
+  .ex-note summary{font-size:12px; color:var(--text-dim); cursor:pointer; list-style:none; display:flex; align-items:center; gap:4px;}
+  .ex-note summary::-webkit-details-marker{display:none;}
+  .ex-note summary::before{content:"▸"; font-size:10px; transition:transform .15s;}
+  .ex-note[open] summary::before{transform:rotate(90deg);}
+  .ex-note p{font-size:12.5px; color:var(--text-dim); line-height:1.55; margin:8px 0 2px; padding-right:4px;}
+
+  .set-row{display:flex; align-items:center; gap:8px; padding:9px 14px; border-top:1px solid var(--border);}
+  .set-label{font-family:var(--mono); font-size:11px; color:var(--text-faint); width:38px; flex-shrink:0;}
+  .set-inputs{display:flex; align-items:center; gap:6px; flex:1;}
+  .set-inputs input{
+    width:100%; min-width:0; background:var(--surface-2); border:1px solid var(--surface-3); color:var(--text);
+    border-radius:9px; padding:10px 4px; font-size:18px; font-weight:700; text-align:center;
+  }
+  .set-x{color:var(--text-faint); font-family:var(--mono); font-size:13px;}
+  .set-last{font-family:var(--mono); font-size:10.5px; color:var(--text-faint); width:64px; text-align:right; line-height:1.3; flex-shrink:0;}
+  .set-badge{width:30px; text-align:center; font-size:15px; flex-shrink:0;}
+
+  .footer-bar{
+    position:fixed; left:0; right:0; bottom:0; z-index:30;
+    max-width:560px; margin:0 auto;
+    background:linear-gradient(180deg, rgba(20,22,26,0) 0%, var(--bg) 30%);
+    padding:22px 16px calc(16px + env(safe-area-inset-bottom));
+  }
+  .finish-btn{
+    width:100%; padding:16px; border-radius:14px; font-size:16px; font-weight:800;
+    display:flex; align-items:center; justify-content:center; gap:8px; letter-spacing:-0.01em;
+    box-shadow:0 8px 24px rgba(0,0,0,.35);
+  }
+  .progress-pill{
+    font-family:var(--mono); font-size:11.5px; color:var(--text-dim); text-align:center; margin-bottom:8px;
+  }
+  .discard-link{font-size:12.5px; color:var(--text-faint); text-decoration:underline; margin-left:auto;}
+
+  /* ---------- history ---------- */
+  .hist-list{padding:14px 16px 40px; display:flex; flex-direction:column; gap:10px;}
+  .hist-card{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:12px 14px;}
+  .hist-card summary{display:flex; align-items:center; gap:10px; cursor:pointer; list-style:none;}
+  .hist-card summary::-webkit-details-marker{display:none;}
+  .hist-date{font-weight:700; font-size:14.5px;}
+  .hist-count{font-size:11.5px; color:var(--text-faint); font-family:var(--mono);}
+  .hist-del{margin-left:auto; font-size:15px; color:var(--text-faint); padding:4px;}
+  .hist-body{margin-top:10px; padding-top:10px; border-top:1px solid var(--border); display:flex; flex-direction:column; gap:6px;}
+  .hist-ex-row{display:flex; justify-content:space-between; gap:10px; font-size:13px;}
+  .hist-ex-name{color:var(--text-dim);}
+  .hist-ex-sets{font-family:var(--mono); font-weight:700; text-align:right;}
+  .empty-state{padding:40px 20px; text-align:center; color:var(--text-faint); font-size:13.5px;}
+
+  .toast{
+    position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(20px);
+    background:#F2F3F5; color:#14161A; padding:12px 18px; border-radius:99px; font-size:13.5px; font-weight:700;
+    opacity:0; transition:opacity .25s, transform .25s; z-index:50; box-shadow:0 10px 30px rgba(0,0,0,.4);
+    white-space:nowrap;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+  @media (prefers-reduced-motion: reduce){
+    .toast{transition:none;}
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= DATA ================= */
+const SESSIONS = {
+  Legs: { color:"var(--legs)", hex:"#4ADE80", emoji:"🦵", subtitle:null, items:[
+    {type:"ex", name:"Forward and reverse walking lunge", sets:2, reps:"10 steps each way", tempo:null, extra:null, status:null,
+     tech:"In-line lunge. Step forward in a long stride with the front foot slightly inside the hip width and the back foot totally upright on the toes. Keep your bodyweight forward in the front leg and lean the torso forward into a slight hinge so the shoulders sit close to being over top of the front knee as you hit depth. Focus on tracking the knee directly over the big toe and getting as much ROM as you're able to at the front knee and hip. With the back leg, try to keep the knee pointing straight at the ground without turning out to the wall, keep the back glute very tightly contracted, and keep strong pressure into the floor with the toes. On the reverse lunges instead of leaning the torso forward and getting the knee far over the foot, you want to have the front knee as close to sitting directly over top of the ankle and possible with the torso totally vertical at the hip. Most of your pressure will sit in the heel of the front foot and the back leg with the knee still pointing straight down at the ground and the glute squeezed."},
+    {type:"ex", name:"Side Plank", sets:1, reps:"30 sec", tempo:null, extra:null, status:null,
+     tech:"On the elbow with the arm at 90 degrees to the shoulder. Set the feet on the ground stacked on top of one another. Back the ribs down, draw in the core and the pelvic floor (stop yourself from peeing sensation) and raise the hips so your full body is in alignement. Base of the chin, center of ribcage, middle of the hips in front, no crunching forward and pushing the hips back. Act as if you're standing."},
+    {type:"note", text:"Rather than provide you with more preparatory movements, let me know if you are having any issues"},
+    {type:"ex", name:"Adductors", sets:2, reps:"8-10, 15-20", tempo:"3-2-1-1", extra:null, status:null,
+     tech:"Use your hands to assist the first rep and lower the weight with a slow, controlled first eccentric. Stay tall in the seat with a slight lean back and a strong brace. Drive pressure into the pads rather than the feet and slightly externally rotate the thighs."},
+    {type:"ex", name:"Seated Leg Curl", sets:2, reps:"8--12", tempo:"4-2-1-1", extra:null, status:null,
+     tech:"Press yourself back into the seat on these rather than sit forward over the handles..Be conscious of the initiation of movement coming from the hamstring, dig into a hard contraction before moving the load. Keep the upper leg pressed into the pad as tightly as you can and keep the glute tight on both sides throughout. The first 3 and last 3 inches of the movement should be the most controlled and slowed."},
+    {type:"ex", name:"BB RDL", sets:1, reps:"7--10", tempo:"3-1-1-1", extra:"(2 reps in the tank)", status:null,
+     tech:"Set the feet underneath you in the position that is most comfortable and strong. Hip width stance or inside of that. Grip the bar just outside of the width of the legs. Keep the arms fully straight, slight external rotation intent at the shoulders to keep the lats engaged, set the eyes on a point of the floor in front of you, keep the spine neutral, and hinge purely at the hips only allowing a small knee bend."},
+    {type:"ex", name:"Hack squat", sets:1, reps:"10--15", tempo:"3-2-1-1", extra:null, status:null,
+     tech:"Set the feet as low as you can get them while keeping the whole foot on the platform the entire time. Set the feet at or inside of hip width, feet parallel or close, and track the knees directly over the big toes."},
+    {type:"ex", name:"Unilateral leg press on Hammer Horizontal", sets:1, reps:"10-15", tempo:"3-1-1-1", extra:"(Week 3, add a set)", status:null,
+     tech:"As low of a foot placement as you can get with the greatest ROM. The goal is Quad not ham. set the seat back as far as possible while not compromising loading or comfortability."},
+    {type:"ex", name:"Split Squat  (quad focused)", sets:1, reps:"10--15", tempo:"3-2-1-1", extra:null, status:null,
+     tech:"Rear foot elevated split squat. Hold a dumbbell in the opposite hand as the front leg. Back leg elevated on a bench or rig that around knee height. Allow the torso to rotate towards the front leg as you come down. Keep the back leg pressing down through the rig or bench and keep the back leg in line with the angle of the torso throughout."},
+    {type:"ex", name:"Leg extension", sets:1, reps:"12-15", tempo:"3-1-1-1", extra:null, status:null,
+     tech:"Lock yourself in hard. Set up with the upper leg slightly internally rotated just to reach a neutral position. Initiate with a contraction at the quad and move slowly."}
+  ]},
+  Push: { color:"var(--push)", hex:"#60A5FA", emoji:"💪", subtitle:"Push (Chest, Delt, + Back touch up after a few weeks if we move rest days)", items:[
+    {type:"ex", name:"Band resisted 90 degree internal external rot", sets:1, reps:"10 each", tempo:null, extra:null, status:null,
+     tech:"Set up a band a few inches higher than the top of the shoulder. Hold the band in hand and turn away from it so it's pulling you backwards. Stand with the same side leg forward in a B stance, pack the ribcage down, tuck the pelvis, and create a packed shoulder position as if getting set to squat or for a barbell split squat. Get the arm out in line to the shoulder, abducted from the body to 90 degrees. Hold the band in hand and walk into the resistance that should be fighting you into internal rotation at the shoulder, let it but keep the upper arm in the exact same position aside from the rotation. Relax into the position and keep standing away to build more resistance, then slowly fight the arm into external rotation as far as you can get it, you hsould end up in a neutral pressing position. Then go back to the end range internal rotation again trying to help contract into it with the aid of the band. Once that is done, do the same with external rotation. Set up so the band is pulling you into external rotation, let it. Then resist and bring yourself as far into internal rotation as possible then slowly return to start and try to aid the band in getting even further back into external rotation. Repeat as many reps as needed of both. One done fully before the other."},
+    {type:"ex", name:"External rotation at 90 (by itself)", sets:1, reps:"10 each side", tempo:"3-1-3-1", extra:null, status:null,
+     tech:"set up a band just below the height of your bottom rib. Wrap the band around the wrist of one hand while facing the band. Keep the elbow bent at 90 degress and put the elbow to the side of the shoulder in parallel to it. Pull up and back through the band by rotating the arm to get the knuckles as far back behind you as you can. Give a second hold at the top then return to the bottom."},
+    {type:"ex", name:"Bent over I's, Y's, and T's", sets:1, reps:"10 each", tempo:null, extra:null, status:null,
+     tech:"Grab 2.5, 5, or 10 pound plates with one in each hand. Bend over to about 90 degrees at the hip with the spine tall and proud. I's are done with a neutral hand and shoulder position. Raise the straight, neutral arms overhead as far as you can get them and hold the isometric at the top. Move slowly back down to starting position and then bring the arms up and back behind you in the opposite direction then return to starting. The shoulder blades are to move in the way they naturally try to. T's, externally rotate the shoulder and go into slight t spine flexion while lettign the shoulders protract. All at once, raise the hands out to the corners of the room, extend the spine into neutral, and depress the scaps. Return to normal slowly. T's, externally rotate the shoulder and emulate the position for the Y's but direct the hands out straight to the sides instead of at an angle to the shoulder."},
+    {type:"ex", name:"15 degree incline dumbbell press or Smith machine**", sets:2, reps:"6--8, 8--10", tempo:"3-2-1-1", extra:null, status:null,
+     tech:"Use Incline Bench, set cables low, slow eccentric"},
+    {type:"ex", name:"Incline Press Machine", sets:2, reps:"8--12", tempo:"3-2-1-1", extra:null, status:null,
+     tech:"Get the grip in a position that allows you to control the direction your upper arms track. You should have the elbows track slightly forwards rather than directly out to the sides. Focus on depressing the shoulders moreso than retracting them. ROW the weight down on the eccentric."},
+    {type:"ex", name:"Pec Deck", sets:2, reps:"10-15", tempo:"3-2-1-1", extra:null, status:null,
+     tech:"Keep the chest proud throughout. Let the elbows bend into the eccentric and allow the shoulder blades to retract and elevate slightly. Then straighten as you come forward without collapsing the chest."},
+    {type:"ex", name:"Dips", sets:1, reps:"AMRAP", tempo:"3-2-1-1", extra:null, status:null,
+     tech:"I want a nasty stretch here"},
+    {type:"ex", name:"Cross cable tricep extension", sets:3, reps:"12--15", tempo:"3-2-3-2", extra:null, status:null,
+     tech:"Set a close cable rig with both cables just above shoulder height, grab the opposite side cable and cross them. Stand at a distance from the cable stack that makes the line of the fully flexed arm nearly 90 degrees to the cable in the start position."},
+    {type:"ex", name:"Machine Row of Choice superset with Overhand Lat Pulldowns", sets:2, reps:"10--15 each", tempo:"3-2-1-1", extra:null, status:"REMOVE FOR NOW",
+     tech:"This is for a small hit of back volume for a 2nd stimulus this week!"},
+    {type:"ex", name:"Standing Lateral Raise Machine or DB Lateral Raises", sets:2, reps:"10--15", tempo:"3-2-3-2", extra:null, status:null,
+     tech:"Pause at top and lower slowly!"},
+    {type:"ex", name:"Curling Variation of Choice", sets:3, reps:"12--15", tempo:"3-2-3-2", extra:null, status:null,
+     tech:"DB, Machine, Cable, all fine here"}
+  ]},
+  Pull: { color:"var(--pull)", hex:"#FB923C", emoji:"🔙", subtitle:"Pull, Side Delts", items:[
+    {type:"ex", name:"Band resisted 90 degree internal external rot", sets:1, reps:"10 each", tempo:null, extra:null, status:null,
+     tech:"Set up a band a few inches higher than the top of the shoulder. Hold the band in hand and turn away from it so it's pulling you backwards. Stand with the same side leg forward in a B stance, pack the ribcage down, tuck the pelvis, and create a packed shoulder position as if getting set to squat or for a barbell split squat. Get the arm out in line to the shoulder, abducted from the body to 90 degrees. Hold the band in hand and walk into the resistance that should be fighting you into internal rotation at the shoulder, let it but keep the upper arm in the exact same position aside from the rotation. Relax into the position and keep standing away to build more resistance, then slowly fight the arm into external rotation as far as you can get it, you hsould end up in a neutral pressing position. Then go back to the end range internal rotation again trying to help contract into it with the aid of the band. Once that is done, do the same with external rotation. Set up so the band is pulling you into external rotation, let it. Then resist and bring yourself as far into internal rotation as possible then slowly return to start and try to aid the band in getting even further back into external rotation. Repeat as many reps as needed of both. One done fully before the other."},
+    {type:"ex", name:"Bent over I's, Y's, and T's", sets:1, reps:"10 each", tempo:null, extra:null, status:null,
+     tech:"Grab 2.5, 5, or 10 pound plates with one in each hand. Bend over to about 90 degrees at the hip with the spine tall and proud. I's are done with a neutral hand and shoulder position. Raise the straight, neutral arms overhead as far as you can get them and hold the isometric at the top. Move slowly back down to starting position and then bring the arms up and back behind you in the opposite direction then return to starting. The shoulder blades are to move in the way they naturally try to. T's, externally rotate the shoulder and go into slight t spine flexion while lettign the shoulders protract. All at once, raise the hands out to the corners of the room, extend the spine into neutral, and depress the scaps. Return to normal slowly. T's, externally rotate the shoulder and emulate the position for the Y's but direct the hands out straight to the sides instead of at an angle to the shoulder."},
+    {type:"ex", name:"Hanging leg raise", sets:3, reps:"AMRAP", tempo:"3-1-3-1", extra:null, status:null,
+     tech:"Grip just outside the shoulders. Deadhang, hands are hooks and arms are ropes. Depress the scaps and lock them down. Posterior tilt the pelvis under you (scared dog position). Slowly lift the straightened legs out as far from you as you can, don't think \"up\". pause, come down slow. Don't let shoulders cave or the hips turn behind you \"instahoe-duckbutt position)"},
+    {type:"ex", name:"Single Arm Cable PD or machine variation ie. Nautilus", sets:2, reps:"8--12", tempo:"3-2-1-1", extra:null, status:null,
+     tech:"Kneel with the working side leg up under the knee pad and that whole upper leg/hip pressed against the side of the pulldown station seat. Use the non working arm to grab onto the center of the leg pad piece wherever you can get a good handhold. Strap yourself into it like your arm is a seatbelt. Keep the spine in neutral but get a slight crunch on the working side to lock the ribcage in place. Lean the torso back slightly so you're not perfectly vertical. Pull with the elbow tracking forward and the upper arm rubbing up against your ribcage."},
+    {type:"ex", name:"Machine Row for lats (pronated grip, grab close to middle)", sets:1, reps:"8--12", tempo:"3-2-1-1", extra:null, status:null,
+     tech:"Set the seat up low enough that the handles/hands start at the height of the shoulders so the downward path is more exaggerated. Keep the chest proud throughout but do allow the shoulders to protract forward in the stretch."},
+    {type:"ex", name:"Assisted Overhand Pullups", sets:2, reps:"15--20", tempo:"3-2-1-1", extra:null, status:null,
+     tech:"Do 3 lengthened partial reps at the end of each set. Cable PD neutral grip is another option"},
+    {type:"ex", name:"Bilateral high arm angle upper back row - precise chest support row", sets:2, reps:"7-9, 10-15", tempo:"3-1-1-1", extra:"Finish partials with scap shrug and retraction", status:"If upper back focused session",
+     tech:"Set the seat up fairly low but high enough that you can get your shoulders to wrap around the top of the chest pad as you get into the stretched position. Get the most total shoulder blade travel as possible. Elbows track out to the sides."},
+    {type:"ex", name:"Machine Row (Upper back focused, elbows out to side)", sets:1, reps:"12--15", tempo:"3-2-1-1", extra:null, status:null,
+     tech:"Prime machine with cam setting on 3 is a great one OR chest supported T bar"},
+    {type:"ex", name:"Cable Y Lateral Raises", sets:2, reps:"15--20", tempo:"3-1-1-1", extra:null, status:null,
+     tech:"Lower slow and come up forcefully (myorep match set 1)"},
+    {type:"ex", name:"Cable Rope Facepulls", sets:2, reps:"15--25", tempo:"3-1-1-1", extra:null, status:"remove for now",
+     tech:"2nd set, make this a rest pause."},
+    {type:"ex", name:"RD cable fly bilateral on free motion cable or close cable stack", sets:2, reps:"12--15", tempo:"3-2-1-2", extra:null, status:null,
+     tech:"Set the cable cams just above the shoulders, stand back while facing the cable stack. I'd recommend using a cuff for this to use as a grip so you can keep a neutral hand and wrist. Elevate the shoulder blades and keep them there. Press out to the walls with a mostly outward path but slightly downwards as well."},
+    {type:"ex", name:"Curling Variation of Choice (isolation based)", sets:2, reps:"15--20", tempo:"3-2-3-2", extra:null, status:null,
+     tech:"Machine preacher single arm would be a good one here"}
+  ]},
+  Arms: { color:"var(--arms)", hex:"#C084FC", emoji:"💥", subtitle:"Arms + Rear delts", items:[
+    {type:"ex", name:"Cable Press (Chest)", sets:2, reps:"10--15", tempo:"3-2-1-3", extra:null, status:null,
+     tech:"75 degree utility bench - pause 3 seconds at top and bottom"},
+    {type:"ex", name:"Side Laterals (Machine or standing)", sets:3, reps:"10--15", tempo:"3-1-1-1", extra:null, status:null,
+     tech:"Think out not up"},
+    {type:"ex", name:"internally rotated arm, cross body tricep extension SA", sets:2, reps:"10--15", tempo:"3-2-1-1", extra:null, status:null,
+     tech:"Set the cable just above head height and turn the body so the non working side is directly in parallel to the cable cam shaft. Use the non working arm to push yourself away to brace. Internally rotate the working arm so your palm is fully pronated and turned towards the body. Lean forward slightly at the hip to keep the body out of the way of the hand. Elbow is pointed out to the side at about 30 degress abduction of the shoulder and kept there."},
+    {type:"ex", name:"Standing single arm tricep extension - shoulder height- straight forward from the shoulder", sets:2, reps:"10--15", tempo:"3-2-1-2", extra:null, status:null,
+     tech:"Cams just slightly above shoulder height. Elbows straight in front of the shoulders. Keep the elbows there and extend the elbow."},
+    {type:"ex", name:"Press for triceps (close grip smith / Nautilus nitro chest press neutral grip)", sets:3, reps:"10--15", tempo:"3-2-1-1", extra:null, status:null,
+     tech:"Set up with your grip slightly closer than you would for a chest press"},
+    {type:"ex", name:"Machine preacher curl single arm", sets:3, reps:"10--15", tempo:"3-2-3-2", extra:null, status:null,
+     tech:"Turn the upper body away from the working side in the set up."},
+    {type:"ex", name:"Single arm incline cable curl hammer grip", sets:2, reps:"10--15", tempo:"3-2-3-2", extra:null, status:null,
+     tech:"Cable cam set low and stand with the same side leg forward and resist rotating towards the working side. Chest proud, depressed shoulders, no heightened sternum angle."},
+    {type:"ex", name:"Bilateral cable curl supinated, directly over cables", sets:2, reps:"10--15", tempo:"3-2-3-2", extra:null, status:null,
+     tech:"Stand over cable cams set low to the ground. Keep a tall posture. Curl by keeping the upper arm slightly in front of the ribs and don't allow them to move as you curl. Partials to full failure"},
+    {type:"ex", name:"Lateral of choice (cable) lateral OR Machine lateral", sets:3, reps:"10--15", tempo:"4-2-4-2", extra:null, status:null,
+     tech:"I want these done pretty slow, really focus on the bottom of the movement. Partials to full failure"},
+    {type:"ex", name:"Reverse Pec Deck (if prime, setting 5)", sets:3, reps:"10--15", tempo:"3-2-1-2", extra:null, status:null,
+     tech:"Lean the torso forward into the chest pad so the upper chest is in contact. Keep the upper arms mostly straight. Keep the shoulders set in elevation and retraction and leave them there."}
+  ]}
+};
+const ROTATION = ["Legs","Push","Pull","Arms","Push","Pull","Arms"];
+const FREQ_NOTE = "My suggestion is two days on, one day off. Occasionally if you're feeling great, two days on, one day off, three days on";
+const UNIT = "lbs";
+
+/* ================= STORAGE (fully local, works offline, no Claude account needed) ================= */
+const HIST_KEY = "gymtracker_workout_history";
+const DRAFT_KEY = "gymtracker_workout_draft";
+
+function loadJSON(key, fallback){
+  try{
+    const v = localStorage.getItem(key);
+    return v ? JSON.parse(v) : fallback;
+  }catch(e){ return fallback; }
+}
+function saveJSON(key, obj){
+  try{ localStorage.setItem(key, JSON.stringify(obj)); }catch(e){ /* storage full or blocked, best effort */ }
+}
+
+let history = {};   // { Legs:[ {date, entries:{exName:[{w,r}...]}} ], Push:[...], ... }
+let draft = {};      // { Legs: {date, entries:{...}}, ... }
+let view = {type:"home"};
+let saveTimer = null;
+
+function scheduleSave(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(()=>{ saveJSON(DRAFT_KEY, draft); }, 400);
+}
+
+/* ================= HELPERS ================= */
+function getRepTargets(item){
+  const n = item.sets || 1;
+  if(item.reps && item.reps.includes(",")){
+    const parts = item.reps.split(",").map(s=>s.trim());
+    if(parts.length === n) return parts;
+  }
+  return Array(n).fill(item.reps || "\u2013");
+}
+function fmtDate(iso){
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined,{weekday:"short", month:"short", day:"numeric"});
+}
+function daysAgo(iso){
+  const d0 = new Date(iso); d0.setHours(0,0,0,0);
+  const d1 = new Date(); d1.setHours(0,0,0,0);
+  return Math.round((d1-d0)/86400000);
+}
+function lastAgoLabel(sessionKey){
+  const arr = history[sessionKey];
+  if(!arr || !arr.length) return "Not logged yet";
+  const last = arr[arr.length-1];
+  const n = daysAgo(last.date);
+  if(n<=0) return "Today";
+  if(n===1) return "Yesterday";
+  return n + " days ago";
+}
+function lastEntryFor(sessionKey, exName){
+  const arr = history[sessionKey];
+  if(!arr || !arr.length) return null;
+  for(let i=arr.length-1;i>=0;i--){
+    const e = arr[i].entries[exName];
+    if(e && e.some(s=>s.w!=="" && s.r!=="")) return e;
+  }
+  return null;
+}
+function ensureDraft(sessionKey){
+  if(draft[sessionKey]) return draft[sessionKey];
+  const entries = {};
+  SESSIONS[sessionKey].items.forEach(it=>{
+    if(it.type!=="ex") return;
+    const n = it.sets || 1;
+    entries[it.name] = Array.from({length:n}, ()=>({w:"", r:""}));
+  });
+  draft[sessionKey] = {date:new Date().toISOString(), entries};
+  return draft[sessionKey];
+}
+function compare(curW, curR, lastSet){
+  if(curW==="" || curR==="") return null;
+  if(!lastSet || lastSet.w==="" || lastSet.r==="") return {icon:"\u{1F195}", color:"var(--same)", label:"first time"};
+  const cw = parseFloat(curW), cr = parseFloat(curR);
+  const lw = parseFloat(lastSet.w), lr = parseFloat(lastSet.r);
+  if(cw > lw) return {icon:"\u25B2", color:"var(--up)", label:"+"+(cw-lw)+" "+UNIT};
+  if(cw === lw && cr > lr) return {icon:"\u25B2", color:"var(--up)", label:"+"+(cr-lr)+" reps"};
+  if(cw === lw && cr === lr) return {icon:"\u2013", color:"var(--same)", label:"same"};
+  return {icon:"\u25BC", color:"var(--down)", label:"below last"};
+}
+function toast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(()=>t.classList.remove("show"), 1800);
+}
+
+function showConfirm(msg, onConfirm, confirmLabel){
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = `
+    <div class="modal-card">
+      <div class="modal-msg">${msg}</div>
+      <div class="modal-actions">
+        <button class="modal-btn modal-cancel" data-cancel>Cancel</button>
+        <button class="modal-btn modal-confirm" data-confirm>${confirmLabel || "Discard"}</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector("[data-cancel]").addEventListener("click", ()=>overlay.remove());
+  overlay.addEventListener("click", (e)=>{ if(e.target===overlay) overlay.remove(); });
+  overlay.querySelector("[data-confirm]").addEventListener("click", ()=>{ overlay.remove(); onConfirm(); });
+}
+
+/* ================= TIMERS ================= */
+let stopwatchInterval = null;
+let restTimer = null; // {remaining, total, label, interval, done}
+let audioCtx = null;
+
+function clearAllTimers(){
+  if(stopwatchInterval){ clearInterval(stopwatchInterval); stopwatchInterval = null; }
+  if(restTimer && restTimer.interval){ clearInterval(restTimer.interval); }
+  restTimer = null;
+}
+
+function startStopwatch(key){
+  const tick = ()=>{
+    const el = document.getElementById("stopwatchDisplay");
+    if(!el || !draft[key]) return;
+    const start = new Date(draft[key].date).getTime();
+    const totalSec = Math.max(0, Math.floor((Date.now()-start)/1000));
+    const m = Math.floor(totalSec/60), sec = totalSec%60;
+    el.textContent = String(m).padStart(2,"0")+":"+String(sec).padStart(2,"0");
+  };
+  tick();
+  stopwatchInterval = setInterval(tick, 1000);
+}
+
+function scheduleBeepAt(delaySec){
+  try{
+    if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    if(audioCtx.state === "suspended") audioCtx.resume();
+    const t0 = audioCtx.currentTime + delaySec;
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.connect(g); g.connect(audioCtx.destination);
+    o.frequency.value = 880; g.gain.value = 0.0001;
+    g.gain.exponentialRampToValueAtTime(0.25, t0+0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0+0.5);
+    o.start(t0); o.stop(t0+0.55);
+  }catch(e){ /* audio not available, ignore */ }
+}
+
+function startTimer(seconds, label){
+  if(restTimer && restTimer.interval) clearInterval(restTimer.interval);
+  scheduleBeepAt(seconds);
+  restTimer = {remaining:seconds, total:seconds, label, done:false};
+  renderRestSlot();
+  restTimer.interval = setInterval(()=>{
+    if(!restTimer) return;
+    restTimer.remaining--;
+    if(restTimer.remaining<=0){
+      restTimer.remaining = 0;
+      restTimer.done = true;
+      clearInterval(restTimer.interval);
+      try{ navigator.vibrate && navigator.vibrate([200,100,200]); }catch(e){}
+      setTimeout(()=>{ if(restTimer && restTimer.done){ restTimer=null; renderRestSlot(); } }, 5000);
+    }
+    renderRestSlot();
+  }, 1000);
+}
+function addTime(sec){
+  if(!restTimer) return;
+  restTimer.remaining += sec; restTimer.total += sec;
+  scheduleBeepAt(restTimer.remaining);
+  renderRestSlot();
+}
+function cancelTimer(){
+  if(restTimer && restTimer.interval) clearInterval(restTimer.interval);
+  restTimer = null;
+  renderRestSlot();
+}
+function renderRestSlot(){
+  const slot = document.getElementById("restSlot");
+  if(!slot) return;
+  if(!restTimer){
+    slot.innerHTML = `<button class="rest-idle" data-startrest>\u23F1 Rest 90s</button>`;
+    const b = slot.querySelector("[data-startrest]");
+    if(b) b.addEventListener("click", ()=>startTimer(90, "Rest"));
+    return;
+  }
+  const m = Math.floor(restTimer.remaining/60), sec = restTimer.remaining%60;
+  const timeStr = String(m).padStart(2,"0")+":"+String(sec).padStart(2,"0");
+  slot.innerHTML = `
+    <span class="rest-active${restTimer.done ? " done" : ""}">
+      <span style="font-size:11px; color:var(--text-faint); font-family:var(--mono);">${restTimer.label}</span>
+      <span class="rest-time">${restTimer.done ? "\uD83D\uDD14" : timeStr}</span>
+      ${!restTimer.done ? `<button class="rest-btn" data-addtime>+15s</button>` : ""}
+      <button class="rest-close" data-canceltimer>\u2715</button>
+    </span>`;
+  const at = slot.querySelector("[data-addtime]"); if(at) at.addEventListener("click", ()=>addTime(15));
+  const ct = slot.querySelector("[data-canceltimer]"); if(ct) ct.addEventListener("click", cancelTimer);
+}
+
+/* ================= EXPORT ================= */
+function exportCSV(){
+  const rows = [["Date","Session","Exercise","Set","Weight ("+UNIT+")","Reps"]];
+  Object.keys(history).forEach(key=>{
+    (history[key]||[]).forEach(entry=>{
+      const dateStr = new Date(entry.date).toISOString().slice(0,16).replace("T"," ");
+      Object.entries(entry.entries).forEach(([exName, sets])=>{
+        sets.forEach((set,i)=>{
+          if(set.w==="" || set.r==="") return;
+          rows.push([dateStr, key, exName, i+1, set.w, set.r]);
+        });
+      });
+    });
+  });
+  if(rows.length===1){ toast("No logged data yet"); return; }
+  const csv = rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
+  const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `gym-log-${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast("Exported \u2705");
+}
+
+/* ================= RENDER ================= */
+const app = document.getElementById("app");
+
+function render(){
+  if(view.type==="home") return renderHome();
+  if(view.type==="session") return renderSession(view.session);
+  if(view.type==="history") return renderHistory(view.session);
+}
+
+function renderHome(){
+  clearAllTimers();
+  const chips = ROTATION.map((s,i)=>{
+    const arrow = i < ROTATION.length-1 ? '<span class="rotation-arrow">\u2192</span>' : "";
+    return `<span class="rotation-chip" style="color:${SESSIONS[s].hex}">${s}</span>${arrow}`;
+  }).join("");
+
+  const cards = Object.keys(SESSIONS).map(key=>{
+    const s = SESSIONS[key];
+    const hasDraft = !!draft[key];
+    return `
+    <button class="session-card" data-open="${key}" style="--accent:${s.hex}">
+      <span style="position:absolute;left:0;top:0;bottom:0;width:5px;background:${s.hex}"></span>
+      <span class="emoji">${s.emoji}</span>
+      <span class="meta">
+        <span class="name">${key}${hasDraft ? '<span class="draft-badge">IN PROGRESS<span class="discard-x" data-quickdiscard="'+key+'">\u2715</span></span>' : ""}</span>
+        <span class="sub">${s.subtitle ? s.subtitle : "Last: " + lastAgoLabel(key)}</span>
+      </span>
+      <span class="chev">\u203A</span>
+    </button>`;
+  }).join("");
+
+  app.innerHTML = `
+    <div class="home-wrap">
+      <div class="brand">
+        <div class="kicker">Rebound 2026</div>
+        <h1>Gym Tracker</h1>
+      </div>
+      <div class="rotation-strip">Your rotation:&nbsp;${chips}</div>
+      <details class="info">
+        <summary>\u2139\uFE0F Coach's frequency guidance</summary>
+        <p>${FREQ_NOTE}</p>
+        <p>Pattern: 2 on / 1 off / 3 on / 1 off</p>
+      </details>
+      <div class="session-grid">${cards}</div>
+      <a class="export-link" data-export href="#">\u2B07\uFE0F Export all logged data (CSV)</a>
+    </div>
+  `;
+  app.querySelectorAll("[data-open]").forEach(b=>{
+    b.addEventListener("click", ()=>{ view = {type:"session", session:b.dataset.open}; render(); });
+  });
+  app.querySelectorAll("[data-quickdiscard]").forEach(b=>{
+    b.addEventListener("click", (e)=>{
+      e.stopPropagation();
+      const key = b.dataset.quickdiscard;
+      showConfirm(`Discard the in-progress ${key} session? Nothing will be saved.`, ()=>{
+        delete draft[key];
+        saveJSON(DRAFT_KEY, draft);
+        render();
+      });
+    });
+  });
+  app.querySelector("[data-export]").addEventListener("click", (e)=>{ e.preventDefault(); exportCSV(); });
+}
+
+function renderSession(key){
+  const s = SESSIONS[key];
+  ensureDraft(key);
+  const d = draft[key];
+
+  let exIndex = 0;
+  const rows = s.items.map(it=>{
+    if(it.type==="note"){
+      return `<div class="ex-card" style="padding:12px 14px; font-size:12.5px; color:var(--text-dim); font-style:italic;">\uD83D\uDCAC ${it.text}</div>`;
+    }
+    exIndex++;
+    const targets = getRepTargets(it);
+    const last = lastEntryFor(key, it.name);
+    const flag = it.status ? (/remove/i.test(it.status)
+        ? `<span class="ex-flag flag-pause">\u23F8 ${it.status}</span>`
+        : `<span class="ex-flag flag-star">\u2B50 ${it.status}</span>`) : "";
+    const extra = it.extra ? ` \u00b7 <span style="color:var(--text-dim)">${it.extra}</span>` : "";
+    const secMatch = it.reps && it.reps.match(/(\d+)\s*sec/i);
+    const holdBtn = secMatch ? `<button class="hold-btn" data-hold="${secMatch[1]}" data-holdname="${it.name}">\u25B6 Start ${secMatch[1]}s hold</button>` : "";
+
+    const setRows = d.entries[it.name].map((set, i)=>{
+      const lastSet = last ? last[i] : null;
+      const lastLabel = (lastSet && lastSet.w!=="" && lastSet.r!=="") ? `${lastSet.w}${UNIT}\u00d7${lastSet.r}` : "\u2013";
+      return `
+      <div class="set-row">
+        <span class="set-label">SET ${i+1}</span>
+        <div class="set-inputs">
+          <input type="number" inputmode="decimal" placeholder="${UNIT}" enterkeyhint="next"
+            data-ex="${it.name}" data-set="${i}" data-field="w" value="${set.w}">
+          <span class="set-x">\u00d7</span>
+          <input type="number" inputmode="numeric" placeholder="reps" enterkeyhint="${i===d.entries[it.name].length-1?'done':'next'}"
+            data-ex="${it.name}" data-set="${i}" data-field="r" value="${set.r}">
+        </div>
+        <span class="set-last">Last<br>${lastLabel}</span>
+        <span class="set-badge" id="badge-${cssSafe(it.name)}-${i}"></span>
+      </div>`;
+    }).join("");
+
+    return `
+    <div class="ex-card">
+      <div class="ex-head">
+        <div class="ex-name">${it.name}${flag}</div>
+        <div class="ex-presc">${it.sets||1} × ${it.reps||"\u2013"}${it.tempo ? " @ "+it.tempo : ""}${extra}</div>
+        ${holdBtn}
+        <details class="ex-note"><summary>Technique cue</summary><p>${it.tech}</p></details>
+      </div>
+      ${setRows}
+    </div>`;
+  }).join("");
+
+  app.innerHTML = `
+    <div class="topbar">
+      <button class="back" data-back>\u2039</button>
+      <h1>${s.emoji} ${key}</h1>
+      <button class="icon-btn" data-hist title="History">\uD83D\uDCCA</button>
+      <button class="icon-btn" data-discard title="Discard session">\uD83D\uDDD1</button>
+      <span class="accent-bar" style="background:${s.hex}"></span>
+    </div>
+    <div class="status-row">
+      <span class="stopwatch">\u23F1\uFE0F <b id="stopwatchDisplay">00:00</b></span>
+      <span id="restSlot"></span>
+    </div>
+    ${s.subtitle ? `<div class="session-sub">${s.subtitle}</div>` : ""}
+    <details class="tempo-info">
+      <summary>\u24D8 How to read Tempo (e.g. 4-2-1-1)</summary>
+      <p>Tempo = 4 numbers in seconds: <code>Eccentric\u2013BottomPause\u2013Concentric\u2013TopPause</code>.<br>
+      Example <code>4-2-1-1</code>: lower the weight for 4s, pause 2s at the bottom, lift for 1s, hold 1s at the top.</p>
+    </details>
+    <div class="ex-list">${rows}</div>
+    <div class="footer-bar">
+      <div class="progress-pill" id="progressPill"></div>
+      <button class="finish-btn" data-finish style="background:${s.hex}; color:#0E1013;">\u2705 Finish Session</button>
+    </div>
+  `;
+
+  app.querySelector("[data-back]").addEventListener("click", ()=>{ clearAllTimers(); view={type:"home"}; render(); });
+  app.querySelector("[data-hist]").addEventListener("click", ()=>{ clearAllTimers(); view={type:"history", session:key}; render(); });
+  app.querySelector("[data-discard]").addEventListener("click", ()=>{
+    showConfirm(`Discard this ${key} session? Nothing will be saved.`, ()=>{
+      clearAllTimers();
+      delete draft[key];
+      saveJSON(DRAFT_KEY, draft);
+      view={type:"home"}; render();
+    });
+  });
+  app.querySelector("[data-finish]").addEventListener("click", ()=>finishSession(key));
+
+  app.querySelectorAll("[data-hold]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{ startTimer(+btn.dataset.hold, "Hold: "+btn.dataset.holdname); });
+  });
+  renderRestSlot();
+  startStopwatch(key);
+
+  app.querySelectorAll('input[data-ex]').forEach(inp=>{
+    inp.addEventListener("input", ()=>{
+      const ex = inp.dataset.ex, si = +inp.dataset.set, field = inp.dataset.field;
+      draft[key].entries[ex][si][field] = inp.value;
+      updateBadge(key, ex, si);
+      updateProgressPill(key);
+      scheduleSave();
+    });
+  });
+  updateProgressPill(key);
+  s.items.filter(i=>i.type==="ex").forEach(it=>{
+    const n = it.sets || 1;
+    for(let i=0;i<n;i++){ updateBadge(key, it.name, i); }
+  });
+}
+
+function cssSafe(str){ return str.replace(/[^a-z0-9]/gi,"_"); }
+
+function updateBadge(key, exName, setIndex){
+  const el = document.getElementById(`badge-${cssSafe(exName)}-${setIndex}`);
+  if(!el) return;
+  const set = draft[key].entries[exName][setIndex];
+  const last = lastEntryFor(key, exName);
+  const lastSet = last ? last[setIndex] : null;
+  const res = compare(set.w, set.r, lastSet);
+  if(!res){ el.textContent=""; return; }
+  el.innerHTML = `<span style="color:${res.color}">${res.icon}</span>`;
+  el.title = res.label;
+}
+
+function updateProgressPill(key){
+  const pill = document.getElementById("progressPill");
+  if(!pill) return;
+  let up=0, total=0;
+  const s = SESSIONS[key];
+  s.items.filter(i=>i.type==="ex").forEach(it=>{
+    const last = lastEntryFor(key, it.name);
+    draft[key].entries[it.name].forEach((set,i)=>{
+      if(set.w==="" || set.r==="") return;
+      total++;
+      const lastSet = last ? last[i] : null;
+      const res = compare(set.w, set.r, lastSet);
+      if(res && res.icon==="\u25B2") up++;
+    });
+  });
+  pill.textContent = total ? `${up}/${total} sets improved` : "Log your first set \u2193";
+}
+
+function finishSession(key){
+  clearAllTimers();
+  const d = draft[key];
+  const loggedSets = Object.values(d.entries).some(sets=>sets.some(s=>s.w!=="" && s.r!==""));
+  if(!loggedSets){ toast("Log at least one set first"); return; }
+  d.date = new Date().toISOString();
+  if(!history[key]) history[key] = [];
+  history[key].push(d);
+  delete draft[key];
+  saveJSON(HIST_KEY, history);
+  saveJSON(DRAFT_KEY, draft);
+  toast("Saved \u2705 Nice work");
+  view = {type:"home"};
+  render();
+}
+
+function renderHistory(key){
+  clearAllTimers();
+  const s = SESSIONS[key];
+  const arr = (history[key]||[]).slice().reverse();
+  const cards = arr.length ? arr.map((entry, revIdx)=>{
+    const idx = arr.length-1-revIdx; // original index
+    const rows = Object.entries(entry.entries).filter(([,sets])=>sets.some(x=>x.w!=="" && x.r!=="")).map(([name,sets])=>{
+      const str = sets.filter(x=>x.w!=="" && x.r!=="").map(x=>`${x.w}\u00d7${x.r}`).join(", ");
+      return `<div class="hist-ex-row"><span class="hist-ex-name">${name}</span><span class="hist-ex-sets">${str}</span></div>`;
+    }).join("");
+    const setCount = Object.values(entry.entries).reduce((a,sets)=>a+sets.filter(x=>x.w!==""&&x.r!=="").length,0);
+    return `
+    <details class="hist-card">
+      <summary>
+        <span class="hist-date">${fmtDate(entry.date)}</span>
+        <span class="hist-count">${setCount} sets</span>
+        <button class="hist-del" data-del="${idx}">\uD83D\uDDD1</button>
+      </summary>
+      <div class="hist-body">${rows || '<span style="color:var(--text-faint); font-size:12.5px;">No sets logged</span>'}</div>
+    </details>`;
+  }).join("") : `<div class="empty-state">No sessions logged yet for ${key}.<br>Finish a workout to see it here.</div>`;
+
+  app.innerHTML = `
+    <div class="topbar">
+      <button class="back" data-back>\u2039</button>
+      <h1>${s.emoji} ${key} History</h1>
+      <span class="accent-bar" style="background:${s.hex}"></span>
+    </div>
+    <div class="hist-list">${cards}</div>
+  `;
+  app.querySelector("[data-back]").addEventListener("click", ()=>{ view={type:"session", session:key}; render(); });
+  app.querySelectorAll("[data-del]").forEach(btn=>{
+    btn.addEventListener("click", (e)=>{
+      e.preventDefault(); e.stopPropagation();
+      showConfirm("Delete this logged session? This can't be undone.", ()=>{
+        history[key].splice(+btn.dataset.del,1);
+        saveJSON(HIST_KEY, history);
+        render();
+      }, "Delete");
+    });
+  });
+}
+
+/* ================= INIT ================= */
+(async function init(){
+  history = await loadJSON(HIST_KEY, {});
+  draft = await loadJSON(DRAFT_KEY, {});
+  render();
+})();
+</script>
+</body>
+</html>
