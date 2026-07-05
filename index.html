@@ -113,6 +113,7 @@
   .volume-bar-fill{display:block; height:100%; background:var(--orange); border-radius:3px;}
   .volume-count{width:24px; text-align:right; font-family:var(--mono); font-size:11px; color:var(--text-faint); flex-shrink:0;}
   .volume-caption{font-size:11px; color:var(--text-faint); margin-top:10px; font-style:italic;}
+  .volume-empty{font-size:12.5px; color:var(--text-faint); font-style:italic; padding:4px 0;}
 
   .deload-note{background:var(--orange-soft); border:1px solid #5A3A18; border-radius:10px; padding:12px 14px; font-size:12.5px; color:var(--orange); text-align:left; margin-bottom:18px; line-height:1.5;}
 
@@ -150,7 +151,10 @@
   .hold-btn{font-family:var(--mono); font-size:10.5px; font-weight:700; letter-spacing:.03em; text-transform:uppercase; color:var(--orange); background:var(--orange-soft); border:1px solid #5A3A18; padding:5px 10px; border-radius:7px; margin-top:8px; display:inline-block;}
 
   .set-row{display:flex; align-items:center; gap:8px; padding:9px 14px; border-top:1px solid var(--border);}
-  .set-label{font-family:var(--mono); font-size:10.5px; color:var(--text-faint); width:38px; flex-shrink:0; letter-spacing:.03em;}
+  .set-label{font-family:var(--mono); font-size:10.5px; color:var(--text-faint); width:38px; flex-shrink:0; letter-spacing:.03em; text-align:left; padding:6px 0;}
+  .set-label.is-warmup{color:var(--orange); font-weight:800;}
+  .set-row.is-warmup{opacity:.72;}
+  .set-row.is-warmup .set-inputs input{border-color:#5A3A18;}
   .set-inputs{display:flex; align-items:center; gap:6px; flex:1;}
   .set-inputs input{
     width:100%; min-width:0; background:var(--surface-2); border:1px solid var(--surface-3); color:var(--text);
@@ -158,7 +162,8 @@
   }
   .set-inputs input:focus{border-color:var(--orange);}
   .set-inputs input:not(.rir-input){flex:1; min-width:0;}
-  .rir-input{flex:0 0 40px !important; font-size:13px !important; padding:10px 2px !important; color:var(--text-dim) !important;}
+  .rir-tag{font-family:var(--mono); font-size:9.5px; font-weight:800; letter-spacing:.03em; color:var(--orange); flex-shrink:0;}
+  .rir-input{flex:0 0 34px !important; width:34px !important; font-size:13px !important; padding:10px 2px !important; color:var(--orange) !important; border-color:#5A3A18 !important;}
   .set-x{color:var(--text-faint); font-family:var(--mono); font-size:13px;}
   .set-last{font-family:var(--mono); font-size:10px; color:var(--text-faint); width:60px; text-align:right; line-height:1.3; flex-shrink:0; letter-spacing:.02em;}
   .set-badge{min-width:34px; width:auto; padding:0 3px; text-align:center; font-size:11.5px; letter-spacing:.02em; flex-shrink:0; font-weight:800;}
@@ -350,6 +355,7 @@ function saveJSON(key, obj){
 
 let history = {};
 let draft = {};
+let editBuffer = null; // {key, index, data} - keeps unsaved edit-mode changes stable across re-renders
 let view = {type:"home"};
 let saveTimer = null;
 
@@ -386,6 +392,18 @@ function lastEntryFor(sessionKey, exName, beforeIndex){
   }
   return null;
 }
+function lastNonWarmupValue(sessionKey, exName, setIndex, beforeIndex){
+  const arr = history[sessionKey];
+  if(!arr || !arr.length) return null;
+  const end = (beforeIndex===undefined) ? arr.length-1 : beforeIndex-1;
+  for(let i=end;i>=0;i--){
+    const sets = arr[i].entries[exName];
+    if(!sets) continue;
+    const s = sets[setIndex];
+    if(s && s.w!=="" && s.r!=="" && !s.warmup) return s;
+  }
+  return null;
+}
 function ensureDraft(sessionKey){
   if(draft[sessionKey]) return draft[sessionKey];
   const entries = {};
@@ -396,6 +414,13 @@ function ensureDraft(sessionKey){
   });
   draft[sessionKey] = {date:new Date().toISOString(), entries, notes:""};
   return draft[sessionKey];
+}
+function ensureEditBuffer(key, index){
+  if(editBuffer && editBuffer.key===key && editBuffer.index===index) return editBuffer.data;
+  const data = JSON.parse(JSON.stringify(history[key][index]));
+  if(data.notes===undefined) data.notes = "";
+  editBuffer = {key, index, data};
+  return data;
 }
 function getExerciseTrend(key, exName, limit){
   const arr = history[key] || [];
@@ -562,14 +587,14 @@ function renderRestSlot(){
 
 /* ================= EXPORT ================= */
 function exportCSV(){
-  const rows = [["Date","Session","Exercise","Set","Weight ("+UNIT+")","Reps","RIR","Notes"]];
+  const rows = [["Date","Session","Exercise","Set","Weight ("+UNIT+")","Reps","RIR","Warmup","Notes"]];
   Object.keys(history).forEach(key=>{
     (history[key]||[]).forEach(entry=>{
       const dateStr = new Date(entry.date).toISOString().slice(0,16).replace("T"," ");
       Object.entries(entry.entries).forEach(([exName, sets])=>{
         sets.forEach((set,i)=>{
           if(set.w==="" || set.r==="") return;
-          rows.push([dateStr, key, exName, i+1, set.w, set.r, set.rir||"", entry.notes||""]);
+          rows.push([dateStr, key, exName, i+1, set.w, set.r, set.rir||"", set.warmup?"yes":"no", entry.notes||""]);
         });
       });
     });
@@ -691,6 +716,7 @@ function renderWorkoutForm(key, mode, index){
   const isEdit = mode === "edit";
   let data;
   if(isLive){ ensureDraft(key); data = draft[key]; }
+  else if(isEdit){ data = ensureEditBuffer(key, index); }
   else { data = JSON.parse(JSON.stringify(history[key][index])); if(data.notes===undefined) data.notes=""; }
 
   const rows = s.items.map(it=>{
@@ -705,28 +731,29 @@ function renderWorkoutForm(key, mode, index){
     const holdBtn = (isLive && secMatch) ? `<button class="hold-btn" data-hold="${secMatch[1]}" data-holdname="${it.name}">Start ${secMatch[1]}s Hold</button>` : "";
 
     const entrySets = data.entries[it.name] || [];
-    const last = isLive ? lastEntryFor(key, it.name) : null;
     const trendPoints = getExerciseTrend(key, it.name, 10);
     const trendHtml = trendPoints.length>=2
       ? `<details class="ex-note"><summary>Progress Trend (est. 1RM)</summary>${trendSVG(trendPoints)}</details>`
       : "";
 
     const setRows = entrySets.map((set, i)=>{
-      let lastLabel = "&ndash;", badgeHtml = "";
+      let lastLabel = "&ndash;";
       if(isLive){
-        const lastSet = last ? last[i] : null;
+        const lastSet = lastNonWarmupValue(key, it.name, i);
         lastLabel = (lastSet && lastSet.w!=="" && lastSet.r!=="") ? `${lastSet.w}${UNIT}&times;${lastSet.r}` : "&ndash;";
       }
+      const isWU = !!set.warmup;
       return `
-      <div class="set-row">
-        <span class="set-label">SET ${i+1}</span>
+      <div class="set-row${isWU ? " is-warmup" : ""}">
+        <button class="set-label${isWU ? " is-warmup" : ""}" data-warmup="${it.name}" data-warmupset="${i}" ${isView ? "disabled" : ""}>${isWU ? "WARM" : "SET "+(i+1)}</button>
         <div class="set-inputs">
           <input type="number" inputmode="decimal" placeholder="${UNIT}" enterkeyhint="next" ${isView ? "disabled" : ""}
             data-ex="${it.name}" data-set="${i}" data-field="w" value="${set.w}">
           <span class="set-x">&times;</span>
           <input type="number" inputmode="numeric" placeholder="reps" enterkeyhint="next" ${isView ? "disabled" : ""}
             data-ex="${it.name}" data-set="${i}" data-field="r" value="${set.r}">
-          <input type="number" inputmode="numeric" placeholder="RIR" min="0" max="5" class="rir-input" enterkeyhint="${i===entrySets.length-1?'done':'next'}" ${isView ? "disabled" : ""}
+          <span class="rir-tag">RIR</span>
+          <input type="number" inputmode="numeric" placeholder="0-5" min="0" max="5" class="rir-input" enterkeyhint="${i===entrySets.length-1?'done':'next'}" ${isView ? "disabled" : ""}
             data-ex="${it.name}" data-set="${i}" data-field="rir" value="${set.rir||''}">
         </div>
         ${isLive ? `<span class="set-last">LAST<br>${lastLabel}</span><span class="set-badge" id="badge-${cssSafe(it.name)}-${i}"></span>` : ""}
@@ -790,6 +817,7 @@ function renderWorkoutForm(key, mode, index){
 
   app.querySelector("[data-back]").addEventListener("click", ()=>{
     clearAllTimers();
+    if(isEdit) editBuffer = null;
     view = isLive ? {type:"home"} : (isView ? {type:"home"} : {type:"history", session:key});
     render();
   });
@@ -812,11 +840,12 @@ function renderWorkoutForm(key, mode, index){
     renderRestSlot();
     startStopwatch(key);
   } else if(isEdit){
-    app.querySelector("[data-canceledit]").addEventListener("click", ()=>{ view={type:"history", session:key}; render(); });
+    app.querySelector("[data-canceledit]").addEventListener("click", ()=>{ editBuffer=null; view={type:"history", session:key}; render(); });
     app.querySelector("[data-save]").addEventListener("click", ()=>{
       data.notes = document.getElementById("sessionNotes").value;
       history[key][index] = data;
       saveJSON(HIST_KEY, history);
+      editBuffer = null;
       toast("Changes saved");
       view={type:"history", session:key}; render();
     });
@@ -832,6 +861,16 @@ function renderWorkoutForm(key, mode, index){
       if(isLive){ updateBadge(key, ex, si); updateProgressPill(key); scheduleSave(); }
     });
   });
+  if(!isView){
+    app.querySelectorAll('[data-warmup]').forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        const ex = btn.dataset.warmup, si = +btn.dataset.warmupset;
+        data.entries[ex][si].warmup = !data.entries[ex][si].warmup;
+        if(isLive) scheduleSave();
+        render();
+      });
+    });
+  }
   const notesEl = document.getElementById("sessionNotes");
   if(notesEl){
     notesEl.addEventListener("input", (e)=>{
@@ -855,8 +894,8 @@ function updateBadge(key, exName, setIndex){
   const el = document.getElementById(`badge-${cssSafe(exName)}-${setIndex}`);
   if(!el) return;
   const set = draft[key].entries[exName][setIndex];
-  const last = lastEntryFor(key, exName);
-  const lastSet = last ? last[setIndex] : null;
+  if(set.warmup){ el.innerHTML = `<span style="color:var(--text-faint);">WU</span>`; el.title="warmup - not tracked"; return; }
+  const lastSet = lastNonWarmupValue(key, exName, setIndex);
   const res = compare(set.w, set.r, lastSet);
   if(!res){ el.textContent=""; return; }
   el.innerHTML = `<span style="color:${res.color}">${res.icon}</span>`;
@@ -869,11 +908,10 @@ function updateProgressPill(key){
   let up=0, total=0;
   const s = SESSIONS[key];
   s.items.filter(i=>i.type==="ex").forEach(it=>{
-    const last = lastEntryFor(key, it.name);
     draft[key].entries[it.name].forEach((set,i)=>{
-      if(set.w==="" || set.r==="") return;
+      if(set.w==="" || set.r==="" || set.warmup) return;
       total++;
-      const lastSet = last ? last[i] : null;
+      const lastSet = lastNonWarmupValue(key, it.name, i);
       const res = compare(set.w, set.r, lastSet);
       if(res && res.icon==="\u25B2") up++;
     });
@@ -893,7 +931,7 @@ function computeWeeklyVolume(){
       if(new Date(entry.date).getTime() < cutoff) return;
       Object.entries(entry.entries).forEach(([exName, sets])=>{
         const muscle = exMuscle[exName] || "Other";
-        const n = sets.filter(s=>s.w!==""&&s.r!=="").length;
+        const n = sets.filter(s=>s.w!==""&&s.r!=="" && !s.warmup).length;
         if(n>0) totals[muscle] = (totals[muscle]||0) + n;
       });
     });
@@ -903,7 +941,11 @@ function computeWeeklyVolume(){
 function renderVolumeBlock(){
   const totals = computeWeeklyVolume();
   const keys = VOLUME_ORDER.filter(m=>totals[m]);
-  if(!keys.length) return "";
+  if(!keys.length){
+    return `
+    <div class="recent-header">This Week's Volume (sets)</div>
+    <div class="volume-empty">No sets logged in the last 7 days yet. Finish a session to see your muscle group breakdown here.</div>`;
+  }
   const rows = keys.map(m=>{
     const n = totals[m];
     const pct = Math.min(100, Math.round((n/20)*100));
@@ -993,11 +1035,11 @@ function checkDeloadSignal(key){
     const entry = arr[idx];
     let up=0, total=0;
     Object.keys(entry.entries).forEach(exName=>{
-      const priorSets = lastEntryFor(key, exName, idx);
       entry.entries[exName].forEach((set,i)=>{
-        if(set.w==="" || set.r==="") return;
+        if(set.w==="" || set.r==="" || set.warmup) return;
         total++;
-        const cmp = compare(set.w, set.r, priorSets ? priorSets[i] : null);
+        const priorSet = lastNonWarmupValue(key, exName, i, idx);
+        const cmp = compare(set.w, set.r, priorSet);
         if(cmp && cmp.icon==="\u25B2") up++;
       });
     });
@@ -1011,13 +1053,16 @@ function computeSessionResults(key, entry){
   let up=0, same=0, down=0, total=0;
   const exercises = [];
   s.items.filter(i=>i.type==="ex").forEach(it=>{
-    const last = lastEntryFor(key, it.name);
     const sets = entry.entries[it.name] || [];
     const setResults = [];
     sets.forEach((set,i)=>{
       if(set.w==="" || set.r==="") return;
+      if(set.warmup){
+        setResults.push({i, w:set.w, r:set.r, rir:set.rir, cmp:null, warmup:true});
+        return;
+      }
       total++;
-      const lastSet = last ? last[i] : null;
+      const lastSet = lastNonWarmupValue(key, it.name, i);
       const cmp = compare(set.w, set.r, lastSet);
       if(cmp){
         if(cmp.icon==="\u25B2") up++;
@@ -1080,8 +1125,8 @@ function renderSummary(){
   const exList = results.exercises.map(ex=>{
     const setLines = ex.sets.map(s=>{
       const cmp = s.cmp;
-      const label = cmp ? (cmp.icon==="NEW" ? "NEW" : cmp.icon+" "+cmp.label) : "";
-      const color = cmp ? cmp.color : "var(--text-dim)";
+      const label = s.warmup ? "WARMUP" : (cmp ? (cmp.icon==="NEW" ? "NEW" : cmp.icon+" "+cmp.label) : "");
+      const color = s.warmup ? "var(--text-faint)" : (cmp ? cmp.color : "var(--text-dim)");
       return `<div class="summary-set"><span>Set ${s.i+1}: ${s.w}${UNIT} &times; ${s.r}${s.rir!==""&&s.rir!==undefined ? " @RIR"+s.rir : ""}</span><span style="color:${color}; font-weight:700;">${label}</span></div>`;
     }).join("");
     return `<div class="summary-ex"><div class="summary-ex-name">${ex.name}</div>${setLines}</div>`;
@@ -1114,7 +1159,7 @@ function renderHistory(key){
   const cards = arr.length ? arr.slice().reverse().map((entry, revIdx)=>{
     const idx = arr.length-1-revIdx;
     const rows = Object.entries(entry.entries).filter(([,sets])=>sets.some(x=>x.w!=="" && x.r!=="")).map(([name,sets])=>{
-      const str = sets.filter(x=>x.w!=="" && x.r!=="").map(x=>`${x.w}&times;${x.r}${x.rir!==""&&x.rir!==undefined ? " @"+x.rir : ""}`).join(", ");
+      const str = sets.filter(x=>x.w!=="" && x.r!=="").map(x=>`${x.w}&times;${x.r}${x.rir!==""&&x.rir!==undefined ? " @"+x.rir : ""}${x.warmup?" (WU)":""}`).join(", ");
       return `<div class="hist-ex-row"><span class="hist-ex-name">${name}</span><span class="hist-ex-sets">${str}</span></div>`;
     }).join("");
     const setCount = Object.values(entry.entries).reduce((a,sets)=>a+sets.filter(x=>x.w!==""&&x.r!=="").length,0);
