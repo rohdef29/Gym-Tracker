@@ -53,6 +53,12 @@
   .rest-btn{font-family:var(--mono); font-size:11px; font-weight:700; color:var(--text-dim); background:var(--surface-3); padding:5px 8px; border-radius:8px;}
   .rest-close{font-size:16px; color:var(--text-faint); padding:4px 6px;}
 
+  .repeat-bar{
+    display:block; width:100%; text-align:center; padding:11px 14px; margin:0;
+    background:var(--orange-soft); border-bottom:1px solid #5A3A18; color:var(--orange);
+    font-size:12px; font-weight:700; letter-spacing:.02em;
+  }
+
   .home-wrap{padding:20px 16px 40px;}
   .brand .kicker{font-family:var(--mono); font-size:11px; letter-spacing:.18em; color:var(--orange); text-transform:uppercase;}
   .brand h1{font-size:27px; margin:6px 0 0; font-weight:800; letter-spacing:-0.01em;}
@@ -83,6 +89,13 @@
   .discard-x{font-size:12px; color:var(--bg); font-weight:900; line-height:1;}
   .export-link{display:inline-block; margin-top:14px; font-size:12px; color:var(--text-faint); text-decoration:underline; letter-spacing:.02em;}
 
+  .recent-header{font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--text-faint); margin:26px 0 10px;}
+  .recent-list{display:flex; flex-direction:column; gap:8px;}
+  .recent-row{display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:10px; background:var(--surface); border:1px solid var(--border); text-align:left;}
+  .recent-name{font-size:12px; font-weight:800; letter-spacing:.04em; color:var(--text-dim); width:52px; flex-shrink:0;}
+  .recent-date{font-size:13px; font-weight:600; flex:1;}
+  .recent-count{font-family:var(--mono); font-size:11px; color:var(--text-faint);}
+
   .session-sub{padding:10px 16px 14px; font-size:12.5px; color:var(--text-dim); border-bottom:1px solid var(--border); font-style:italic;}
   .tempo-info{margin:10px 16px 0; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:9px 14px;}
   .tempo-info summary{font-size:11.5px; color:var(--text-dim); font-weight:700; letter-spacing:.03em; text-transform:uppercase; cursor:pointer; list-style:none;}
@@ -96,6 +109,11 @@
     width:100%; min-height:56px; background:var(--surface); border:1px solid var(--border); color:var(--text);
     border-radius:10px; padding:11px 12px; font-family:var(--ui); font-size:13.5px; line-height:1.4; resize:vertical;
   }
+  .notes-readonly{
+    background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:11px 12px;
+    font-family:var(--ui); font-size:13.5px; line-height:1.4; color:var(--text-dim); font-style:italic;
+  }
+  .set-inputs input:disabled{opacity:.75; color:var(--text-dim);}
 
   .ex-list{padding:14px 16px 130px; display:flex; flex-direction:column; gap:12px;}
   .ex-card{background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden;}
@@ -357,6 +375,48 @@ function ensureDraft(sessionKey){
   draft[sessionKey] = {date:new Date().toISOString(), entries, notes:""};
   return draft[sessionKey];
 }
+function getExerciseTrend(key, exName, limit){
+  const arr = history[key] || [];
+  const points = [];
+  arr.forEach(entry=>{
+    const sets = entry.entries[exName];
+    if(!sets) return;
+    let best = 0;
+    sets.forEach(s=>{
+      if(s.w==="" || s.r==="") return;
+      const w = parseFloat(s.w), r = parseFloat(s.r);
+      if(isNaN(w) || isNaN(r)) return;
+      const e1rm = w * (1 + r/30);
+      if(e1rm>best) best = e1rm;
+    });
+    if(best>0) points.push({date:entry.date, e1rm:Math.round(best*10)/10});
+  });
+  return limit ? points.slice(-limit) : points;
+}
+function trendSVG(points){
+  if(points.length<2) return "";
+  const w=280, h=54, pad=6;
+  const vals = points.map(p=>p.e1rm);
+  const min = Math.min(...vals), max = Math.max(...vals);
+  const range = (max-min) || 1;
+  const stepX = (w-2*pad)/(points.length-1);
+  const coords = points.map((p,i)=>{
+    const x = pad + i*stepX;
+    const y = h-pad - ((p.e1rm-min)/range)*(h-2*pad);
+    return [x,y];
+  });
+  const path = coords.map((c,i)=> (i===0?"M":"L")+c[0].toFixed(1)+","+c[1].toFixed(1)).join(" ");
+  const dots = coords.map(c=>`<circle cx="${c[0].toFixed(1)}" cy="${c[1].toFixed(1)}" r="2.5" fill="#FF7A1A"/>`).join("");
+  return `<svg viewBox="0 0 ${w} ${h}" style="width:100%; height:${h}px; display:block;">
+    <path d="${path}" fill="none" stroke="#FF7A1A" stroke-width="2"/>
+    ${dots}
+  </svg>
+  <div style="display:flex; justify-content:space-between; margin-top:4px; font-family:var(--mono); font-size:10px; color:var(--text-faint);">
+    <span>${fmtDate(points[0].date)} &middot; est. 1RM ${points[0].e1rm}${UNIT}</span>
+    <span>${fmtDate(points[points.length-1].date)} &middot; est. 1RM ${points[points.length-1].e1rm}${UNIT}</span>
+  </div>`;
+}
+
 function compare(curW, curR, lastSet){
   if(curW==="" || curR==="") return null;
   if(!lastSet || lastSet.w==="" || lastSet.r==="") return {icon:"NEW", color:"var(--same)", label:"first time"};
@@ -402,6 +462,7 @@ function clearAllTimers(){
   restTimer = null;
 }
 function startStopwatch(key){
+  if(stopwatchInterval){ clearInterval(stopwatchInterval); stopwatchInterval = null; }
   const tick = ()=>{
     const el = document.getElementById("stopwatchDisplay");
     if(!el || !draft[key]) return;
@@ -509,8 +570,21 @@ function render(){
   if(view.type==="home") return renderHome();
   if(view.type==="session") return renderWorkoutForm(view.session, "live");
   if(view.type==="edit") return renderWorkoutForm(view.session, "edit", view.index);
+  if(view.type==="view") return renderWorkoutForm(view.session, "view", view.index);
   if(view.type==="history") return renderHistory(view.session);
   if(view.type==="summary") return renderSummary();
+}
+
+function getRecentFlat(limit){
+  const flat = [];
+  Object.keys(SESSIONS).forEach(key=>{
+    (history[key]||[]).forEach((entry, idx)=>{
+      const setCount = Object.values(entry.entries).reduce((a,sets)=>a+sets.filter(x=>x.w!==""&&x.r!=="").length,0);
+      if(setCount>0) flat.push({key, idx, date:entry.date, setCount});
+    });
+  });
+  flat.sort((a,b)=> new Date(b.date) - new Date(a.date));
+  return limit ? flat.slice(0, limit) : flat;
 }
 
 function renderHome(){
@@ -533,6 +607,17 @@ function renderHome(){
     </button>`;
   }).join("");
 
+  const recent = getRecentFlat(8);
+  const recentRows = recent.map(r=>{
+    return `
+    <button class="recent-row" data-viewsession="${r.key}" data-viewindex="${r.idx}">
+      <span class="recent-name">${r.key.toUpperCase()}</span>
+      <span class="recent-date">${fmtDate(r.date)}</span>
+      <span class="recent-count">${r.setCount} SETS</span>
+      <span class="chev">&rsaquo;</span>
+    </button>`;
+  }).join("");
+
   app.innerHTML = `
     <div class="home-wrap">
       <div class="brand">
@@ -546,11 +631,17 @@ function renderHome(){
         <p>Pattern: 2 on / 1 off / 3 on / 1 off</p>
       </details>
       <div class="session-grid">${cards}</div>
+      ${recent.length ? `
+      <div class="recent-header">Recent Sessions</div>
+      <div class="recent-list">${recentRows}</div>` : ""}
       <a class="export-link" data-export href="#">Export all logged data (CSV)</a>
     </div>
   `;
   app.querySelectorAll("[data-open]").forEach(b=>{
     b.addEventListener("click", ()=>{ view = {type:"session", session:b.dataset.open}; render(); });
+  });
+  app.querySelectorAll("[data-viewsession]").forEach(b=>{
+    b.addEventListener("click", ()=>{ view = {type:"view", session:b.dataset.viewsession, index:+b.dataset.viewindex}; render(); });
   });
   app.querySelectorAll("[data-quickdiscard]").forEach(b=>{
     b.addEventListener("click", (e)=>{
@@ -570,6 +661,8 @@ function renderHome(){
 function renderWorkoutForm(key, mode, index){
   const s = SESSIONS[key];
   const isLive = mode === "live";
+  const isView = mode === "view";
+  const isEdit = mode === "edit";
   let data;
   if(isLive){ ensureDraft(key); data = draft[key]; }
   else { data = JSON.parse(JSON.stringify(history[key][index])); if(data.notes===undefined) data.notes=""; }
@@ -587,6 +680,10 @@ function renderWorkoutForm(key, mode, index){
 
     const entrySets = data.entries[it.name] || [];
     const last = isLive ? lastEntryFor(key, it.name) : null;
+    const trendPoints = getExerciseTrend(key, it.name, 10);
+    const trendHtml = trendPoints.length>=2
+      ? `<details class="ex-note"><summary>Progress Trend (est. 1RM)</summary>${trendSVG(trendPoints)}</details>`
+      : "";
 
     const setRows = entrySets.map((set, i)=>{
       let lastLabel = "&ndash;", badgeHtml = "";
@@ -598,10 +695,10 @@ function renderWorkoutForm(key, mode, index){
       <div class="set-row">
         <span class="set-label">SET ${i+1}</span>
         <div class="set-inputs">
-          <input type="number" inputmode="decimal" placeholder="${UNIT}" enterkeyhint="next"
+          <input type="number" inputmode="decimal" placeholder="${UNIT}" enterkeyhint="next" ${isView ? "disabled" : ""}
             data-ex="${it.name}" data-set="${i}" data-field="w" value="${set.w}">
           <span class="set-x">&times;</span>
-          <input type="number" inputmode="numeric" placeholder="reps" enterkeyhint="${i===entrySets.length-1?'done':'next'}"
+          <input type="number" inputmode="numeric" placeholder="reps" enterkeyhint="${i===entrySets.length-1?'done':'next'}" ${isView ? "disabled" : ""}
             data-ex="${it.name}" data-set="${i}" data-field="r" value="${set.r}">
         </div>
         ${isLive ? `<span class="set-last">LAST<br>${lastLabel}</span><span class="set-badge" id="badge-${cssSafe(it.name)}-${i}"></span>` : ""}
@@ -615,6 +712,7 @@ function renderWorkoutForm(key, mode, index){
         <div class="ex-presc">${it.sets||1} &times; ${it.reps||"\u2013"}${it.tempo ? " @ "+it.tempo : ""}${extra}</div>
         ${holdBtn}
         <details class="ex-note"><summary>Technique Cue</summary><p>${it.tech}</p></details>
+        ${trendHtml}
       </div>
       ${setRows}
     </div>`;
@@ -622,12 +720,12 @@ function renderWorkoutForm(key, mode, index){
 
   const topbarExtras = isLive
     ? `<button class="text-btn" data-hist>History</button><button class="text-btn warn" data-discard>Discard</button>`
-    : "";
+    : (isView ? `<button class="text-btn" data-editfromview>Edit</button>` : "");
 
   app.innerHTML = `
     <div class="topbar">
       <button class="back" data-back>&lsaquo;</button>
-      <h1>${key}${!isLive ? " &middot; Edit" : ""}</h1>
+      <h1>${key}${isEdit ? " &middot; Edit" : ""}${isView ? " &middot; " + fmtDate(data.date) : ""}</h1>
       ${topbarExtras}
       <span class="accent-bar" style="background:${s.hex}"></span>
     </div>
@@ -636,29 +734,35 @@ function renderWorkoutForm(key, mode, index){
       <span class="stopwatch">TIME <b id="stopwatchDisplay">00:00</b></span>
       <span id="restSlot"></span>
     </div>` : ""}
+    ${(isLive && history[key] && history[key].length) ? `
+    <button class="repeat-bar" data-repeat>Repeat Last Session &rsaquo; fills every set from your last ${key} log</button>` : ""}
     ${s.subtitle ? `<div class="session-sub">${s.subtitle}</div>` : ""}
     <details class="tempo-info">
       <summary>How to read Tempo (e.g. 4-2-1-1)</summary>
       <p>Tempo = 4 numbers in seconds: <code>Eccentric-BottomPause-Concentric-TopPause</code>.<br>
       Example <code>4-2-1-1</code>: lower the weight for 4s, pause 2s at the bottom, lift for 1s, hold 1s at the top.</p>
     </details>
-    <div class="notes-block">
-      <label>Session Notes</label>
-      <textarea id="sessionNotes" placeholder="How did it feel? Anything to remember for next time?">${data.notes||""}</textarea>
-    </div>
-    <div class="ex-list">${rows}</div>
+    ${isView
+      ? (data.notes ? `<div class="notes-block"><label>Session Notes</label><div class="notes-readonly">${data.notes}</div></div>` : "")
+      : `<div class="notes-block">
+          <label>Session Notes</label>
+          <textarea id="sessionNotes" placeholder="How did it feel? Anything to remember for next time?">${data.notes||""}</textarea>
+        </div>`}
+    <div class="ex-list" style="${isView ? "padding-bottom:110px;" : ""}">${rows}</div>
     <div class="footer-bar-wrap">
       <div class="footer-bar">
         ${isLive
           ? `<div class="progress-pill" id="progressPill"></div><button class="btn btn-primary" data-finish>Finish Session</button>`
-          : `<button class="btn btn-secondary" data-canceledit>Cancel</button><button class="btn btn-primary" data-save>Save Changes</button>`}
+          : (isEdit
+            ? `<button class="btn btn-secondary" data-canceledit>Cancel</button><button class="btn btn-primary" data-save>Save Changes</button>`
+            : `<button class="btn btn-secondary" style="flex:none; width:100%;" data-back2>Back</button>`)}
       </div>
     </div>
   `;
 
   app.querySelector("[data-back]").addEventListener("click", ()=>{
     clearAllTimers();
-    view = isLive ? {type:"home"} : {type:"history", session:key};
+    view = isLive ? {type:"home"} : (isView ? {type:"home"} : {type:"history", session:key});
     render();
   });
   if(isLive){
@@ -675,9 +779,11 @@ function renderWorkoutForm(key, mode, index){
     app.querySelectorAll("[data-hold]").forEach(btn=>{
       btn.addEventListener("click", ()=>{ startTimer(+btn.dataset.hold, "HOLD: "+btn.dataset.holdname); });
     });
+    const repeatBtn = app.querySelector("[data-repeat]");
+    if(repeatBtn) repeatBtn.addEventListener("click", ()=>repeatLastSession(key));
     renderRestSlot();
     startStopwatch(key);
-  } else {
+  } else if(isEdit){
     app.querySelector("[data-canceledit]").addEventListener("click", ()=>{ view={type:"history", session:key}; render(); });
     app.querySelector("[data-save]").addEventListener("click", ()=>{
       data.notes = document.getElementById("sessionNotes").value;
@@ -686,6 +792,9 @@ function renderWorkoutForm(key, mode, index){
       toast("Changes saved");
       view={type:"history", session:key}; render();
     });
+  } else if(isView){
+    app.querySelector("[data-back2]").addEventListener("click", ()=>{ view={type:"home"}; render(); });
+    app.querySelector("[data-editfromview]").addEventListener("click", ()=>{ view={type:"edit", session:key, index}; render(); });
   }
 
   app.querySelectorAll('input[data-ex]').forEach(inp=>{
@@ -695,10 +804,13 @@ function renderWorkoutForm(key, mode, index){
       if(isLive){ updateBadge(key, ex, si); updateProgressPill(key); scheduleSave(); }
     });
   });
-  document.getElementById("sessionNotes").addEventListener("input", (e)=>{
-    data.notes = e.target.value;
-    if(isLive) scheduleSave();
-  });
+  const notesEl = document.getElementById("sessionNotes");
+  if(notesEl){
+    notesEl.addEventListener("input", (e)=>{
+      data.notes = e.target.value;
+      if(isLive) scheduleSave();
+    });
+  }
 
   if(isLive){
     updateProgressPill(key);
@@ -764,6 +876,34 @@ function computeSessionResults(key, entry){
     if(setResults.length) exercises.push({name:it.name, sets:setResults});
   });
   return {up, same, down, total, exercises};
+}
+
+function repeatLastSession(key){
+  const arr = history[key];
+  if(!arr || !arr.length){ toast("No previous session to repeat"); return; }
+  const last = arr[arr.length-1];
+  const d = ensureDraft(key);
+  const hasExisting = Object.values(d.entries).some(sets=>sets.some(s=>s.w!==""||s.r!==""));
+  const apply = ()=>{
+    Object.keys(d.entries).forEach(exName=>{
+      const lastSets = last.entries[exName];
+      if(!lastSets) return;
+      d.entries[exName].forEach((set,i)=>{
+        if(lastSets[i] && lastSets[i].w!=="" && lastSets[i].r!==""){
+          set.w = lastSets[i].w;
+          set.r = lastSets[i].r;
+        }
+      });
+    });
+    saveJSON(DRAFT_KEY, draft);
+    toast("Filled from last session - adjust and go");
+    render();
+  };
+  if(hasExisting){
+    showConfirm("This will overwrite values you've already entered in this session. Continue?", apply, "Overwrite");
+  } else {
+    apply();
+  }
 }
 
 function finishSession(key){
