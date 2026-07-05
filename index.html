@@ -87,7 +87,8 @@
     display:inline-flex; align-items:center; gap:6px;
   }
   .discard-x{font-size:12px; color:var(--bg); font-weight:900; line-height:1;}
-  .export-link{display:inline-block; margin-top:14px; font-size:12px; color:var(--text-faint); text-decoration:underline; letter-spacing:.02em;}
+  .export-link{display:inline-block; font-size:12px; color:var(--text-faint); text-decoration:underline; letter-spacing:.02em;}
+  .export-row{display:flex; gap:18px; margin-top:14px;}
 
   .recent-header{font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--text-faint); margin:26px 0 10px;}
   .recent-list{display:flex; flex-direction:column; gap:8px;}
@@ -361,7 +362,11 @@ let saveTimer = null;
 
 function scheduleSave(){
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(()=>{ saveJSON(DRAFT_KEY, draft); }, 400);
+  saveJSON(DRAFT_KEY, draft);
+}
+function flushSave(){
+  clearTimeout(saveTimer);
+  saveJSON(DRAFT_KEY, draft);
 }
 
 /* ================= HELPERS ================= */
@@ -586,6 +591,63 @@ function renderRestSlot(){
 }
 
 /* ================= EXPORT ================= */
+function buildPrintableHTML(){
+  const now = new Date();
+  const genDate = now.toLocaleDateString(undefined,{weekday:"long", year:"numeric", month:"long", day:"numeric"});
+  let sections = "";
+  Object.keys(SESSIONS).forEach(key=>{
+    const arr = (history[key]||[]).slice().reverse();
+    if(!arr.length) return;
+    const entriesHtml = arr.map(entry=>{
+      const rows = Object.entries(entry.entries).filter(([,sets])=>sets.some(x=>x.w!==""&&x.r!=="")).map(([name,sets])=>{
+        const setStr = sets.filter(x=>x.w!==""&&x.r!=="").map(x=>{
+          const rirStr = (x.rir!==""&&x.rir!==undefined) ? ` (RIR ${x.rir})` : "";
+          const wuStr = x.warmup ? " [warmup]" : "";
+          return `${x.w}${UNIT} x ${x.r}${rirStr}${wuStr}`;
+        }).join(", ");
+        return `<tr><td>${name}</td><td>${setStr}</td></tr>`;
+      }).join("");
+      return `
+      <div class="entry">
+        <div class="entry-date">${fmtDate(entry.date)}</div>
+        ${entry.notes ? `<div class="entry-notes">Notes: ${entry.notes}</div>` : ""}
+        <table><tbody>${rows}</tbody></table>
+      </div>`;
+    }).join("");
+    sections += `<h2>${key}</h2>${entriesHtml}`;
+  });
+  if(!sections){
+    sections = `<p style="color:#666;">No logged sessions yet.</p>`;
+  }
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Rebound 2026 - Training Log</title>
+  <style>
+    body{font-family:-apple-system,Helvetica,Arial,sans-serif; color:#111; margin:32px; font-size:13px; line-height:1.4;}
+    h1{font-size:20px; margin-bottom:2px;}
+    .subtitle{color:#666; font-size:12px; margin-bottom:24px;}
+    h2{font-size:15px; margin-top:28px; margin-bottom:8px; border-bottom:2px solid #111; padding-bottom:4px; text-transform:uppercase; letter-spacing:.04em;}
+    .entry{margin-bottom:14px; page-break-inside:avoid;}
+    .entry-date{font-weight:700; font-size:13px; margin-bottom:2px;}
+    .entry-notes{font-style:italic; color:#555; font-size:12px; margin-bottom:4px;}
+    table{width:100%; border-collapse:collapse; font-size:12px;}
+    td{padding:3px 6px; border-bottom:1px solid #ddd; vertical-align:top;}
+    td:first-child{width:45%; font-weight:600;}
+    @media print{ body{margin:14mm;} }
+  </style></head><body>
+  <h1>Rebound 2026 - Training Log</h1>
+  <div class="subtitle">Exported ${genDate}</div>
+  ${sections}
+  </body></html>`;
+}
+function exportPDF(){
+  const html = buildPrintableHTML();
+  const win = window.open("", "_blank");
+  if(!win){ toast("Please allow pop-ups to export a PDF"); return; }
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(()=>{ win.print(); }, 300);
+}
+
 function exportCSV(){
   const rows = [["Date","Session","Exercise","Set","Weight ("+UNIT+")","Reps","RIR","Warmup","Notes"]];
   Object.keys(history).forEach(key=>{
@@ -683,7 +745,10 @@ function renderHome(){
       ${recent.length ? `
       <div class="recent-header">Recent Sessions</div>
       <div class="recent-list">${recentRows}</div>` : ""}
-      <a class="export-link" data-export href="#">Export all logged data (CSV)</a>
+      <div class="export-row">
+        <a class="export-link" data-export href="#">Export CSV</a>
+        <a class="export-link" data-exportpdf href="#">Export PDF</a>
+      </div>
     </div>
   `;
   const prepBtn = app.querySelector("[data-setprep]"); if(prepBtn) prepBtn.addEventListener("click", showPrepForm);
@@ -706,6 +771,7 @@ function renderHome(){
     });
   });
   app.querySelector("[data-export]").addEventListener("click", (e)=>{ e.preventDefault(); exportCSV(); });
+  app.querySelector("[data-exportpdf]").addEventListener("click", (e)=>{ e.preventDefault(); exportPDF(); });
 }
 
 /* Shared form for both live logging and editing a past session */
@@ -1211,6 +1277,14 @@ function renderHistory(key){
   history = loadJSON(HIST_KEY, {});
   draft = loadJSON(DRAFT_KEY, {});
   render();
+
+  // Safety net: flush any pending save the instant the page might go away -
+  // covers app switching, phone lock, tab close, and browser backgrounding.
+  document.addEventListener("visibilitychange", ()=>{
+    if(document.visibilityState === "hidden") flushSave();
+  });
+  window.addEventListener("pagehide", flushSave);
+  window.addEventListener("blur", flushSave);
 })();
 </script>
 </body>
