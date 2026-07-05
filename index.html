@@ -96,6 +96,26 @@
   .recent-date{font-size:13px; font-weight:600; flex:1;}
   .recent-count{font-family:var(--mono); font-size:11px; color:var(--text-faint);}
 
+  .prep-card{display:block; width:100%; text-align:left; margin-top:16px; padding:14px 16px; border-radius:10px; background:var(--surface); border:1px solid var(--border); color:var(--text-dim); font-size:12.5px; font-weight:700; letter-spacing:.02em;}
+  .prep-card.active{cursor:default;}
+  .prep-top{display:flex; align-items:center; justify-content:space-between;}
+  .prep-label{font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--orange);}
+  .prep-edit{font-size:11px; font-weight:700; letter-spacing:.03em; text-transform:uppercase; color:var(--text-faint);}
+  .prep-count{font-size:19px; font-weight:800; margin-top:6px; letter-spacing:-0.01em;}
+  .prep-remove{width:100%; margin-top:10px; font-size:12px; color:var(--down); text-align:center; padding:8px; font-weight:700; letter-spacing:.02em;}
+  .field-label{font-size:11px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.05em; display:block; margin-bottom:5px; font-weight:700;}
+  .field-input{width:100%; background:var(--surface-2); border:1px solid var(--border); color:var(--text); border-radius:8px; padding:10px; font-family:var(--ui); font-size:14px; margin-bottom:14px;}
+
+  .volume-block{display:flex; flex-direction:column; gap:9px; margin-top:4px;}
+  .volume-row{display:flex; align-items:center; gap:10px;}
+  .volume-name{width:78px; flex-shrink:0; font-size:11px; font-weight:700; letter-spacing:.02em; color:var(--text-dim);}
+  .volume-bar-track{flex:1; height:6px; background:var(--surface-2); border-radius:3px; overflow:hidden;}
+  .volume-bar-fill{display:block; height:100%; background:var(--orange); border-radius:3px;}
+  .volume-count{width:24px; text-align:right; font-family:var(--mono); font-size:11px; color:var(--text-faint); flex-shrink:0;}
+  .volume-caption{font-size:11px; color:var(--text-faint); margin-top:10px; font-style:italic;}
+
+  .deload-note{background:var(--orange-soft); border:1px solid #5A3A18; border-radius:10px; padding:12px 14px; font-size:12.5px; color:var(--orange); text-align:left; margin-bottom:18px; line-height:1.5;}
+
   .session-sub{padding:10px 16px 14px; font-size:12.5px; color:var(--text-dim); border-bottom:1px solid var(--border); font-style:italic;}
   .tempo-info{margin:10px 16px 0; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:9px 14px;}
   .tempo-info summary{font-size:11.5px; color:var(--text-dim); font-weight:700; letter-spacing:.03em; text-transform:uppercase; cursor:pointer; list-style:none;}
@@ -137,6 +157,8 @@
     border-radius:8px; padding:10px 4px; font-size:17px; font-weight:700; text-align:center;
   }
   .set-inputs input:focus{border-color:var(--orange);}
+  .set-inputs input:not(.rir-input){flex:1; min-width:0;}
+  .rir-input{flex:0 0 40px !important; font-size:13px !important; padding:10px 2px !important; color:var(--text-dim) !important;}
   .set-x{color:var(--text-faint); font-family:var(--mono); font-size:13px;}
   .set-last{font-family:var(--mono); font-size:10px; color:var(--text-faint); width:60px; text-align:right; line-height:1.3; flex-shrink:0; letter-spacing:.02em;}
   .set-badge{min-width:34px; width:auto; padding:0 3px; text-align:center; font-size:11.5px; letter-spacing:.02em; flex-shrink:0; font-weight:800;}
@@ -217,96 +239,96 @@
 /* ================= DATA ================= */
 const SESSIONS = {
   Legs: { hex:"#FF9142", subtitle:null, items:[
-    {type:"ex", name:"Forward and reverse walking lunge", sets:2, reps:"10 steps each way", tempo:null, extra:null, status:null,
+    {type:"ex", name:"Forward and reverse walking lunge", muscle:"Quads", sets:2, reps:"10 steps each way", tempo:null, extra:null, status:null,
      tech:"In-line lunge. Step forward in a long stride with the front foot slightly inside the hip width and the back foot totally upright on the toes. Keep your bodyweight forward in the front leg and lean the torso forward into a slight hinge so the shoulders sit close to being over top of the front knee as you hit depth. Focus on tracking the knee directly over the big toe and getting as much ROM as you're able to at the front knee and hip. With the back leg, try to keep the knee pointing straight at the ground without turning out to the wall, keep the back glute very tightly contracted, and keep strong pressure into the floor with the toes. On the reverse lunges instead of leaning the torso forward and getting the knee far over the foot, you want to have the front knee as close to sitting directly over top of the ankle and possible with the torso totally vertical at the hip. Most of your pressure will sit in the heel of the front foot and the back leg with the knee still pointing straight down at the ground and the glute squeezed."},
-    {type:"ex", name:"Side Plank", sets:1, reps:"30 sec", tempo:null, extra:null, status:null,
+    {type:"ex", name:"Side Plank", muscle:"Core", sets:1, reps:"30 sec", tempo:null, extra:null, status:null,
      tech:"On the elbow with the arm at 90 degrees to the shoulder. Set the feet on the ground stacked on top of one another. Back the ribs down, draw in the core and the pelvic floor (stop yourself from peeing sensation) and raise the hips so your full body is in alignement. Base of the chin, center of ribcage, middle of the hips in front, no crunching forward and pushing the hips back. Act as if you're standing."},
     {type:"note", text:"Rather than provide you with more preparatory movements, let me know if you are having any issues"},
-    {type:"ex", name:"Adductors", sets:2, reps:"8-10, 15-20", tempo:"3-2-1-1", extra:null, status:null,
+    {type:"ex", name:"Adductors", muscle:"Adductors", sets:2, reps:"8-10, 15-20", tempo:"3-2-1-1", extra:null, status:null,
      tech:"Use your hands to assist the first rep and lower the weight with a slow, controlled first eccentric. Stay tall in the seat with a slight lean back and a strong brace. Drive pressure into the pads rather than the feet and slightly externally rotate the thighs."},
-    {type:"ex", name:"Seated Leg Curl", sets:2, reps:"8--12", tempo:"4-2-1-1", extra:null, status:null,
+    {type:"ex", name:"Seated Leg Curl", muscle:"Hamstrings", sets:2, reps:"8--12", tempo:"4-2-1-1", extra:null, status:null,
      tech:"Press yourself back into the seat on these rather than sit forward over the handles..Be conscious of the initiation of movement coming from the hamstring, dig into a hard contraction before moving the load. Keep the upper leg pressed into the pad as tightly as you can and keep the glute tight on both sides throughout. The first 3 and last 3 inches of the movement should be the most controlled and slowed."},
-    {type:"ex", name:"BB RDL", sets:1, reps:"7--10", tempo:"3-1-1-1", extra:"(2 reps in the tank)", status:null,
+    {type:"ex", name:"BB RDL", muscle:"Hamstrings", sets:1, reps:"7--10", tempo:"3-1-1-1", extra:"(2 reps in the tank)", status:null,
      tech:"Set the feet underneath you in the position that is most comfortable and strong. Hip width stance or inside of that. Grip the bar just outside of the width of the legs. Keep the arms fully straight, slight external rotation intent at the shoulders to keep the lats engaged, set the eyes on a point of the floor in front of you, keep the spine neutral, and hinge purely at the hips only allowing a small knee bend."},
-    {type:"ex", name:"Hack squat", sets:1, reps:"10--15", tempo:"3-2-1-1", extra:null, status:null,
+    {type:"ex", name:"Hack squat", muscle:"Quads", sets:1, reps:"10--15", tempo:"3-2-1-1", extra:null, status:null,
      tech:"Set the feet as low as you can get them while keeping the whole foot on the platform the entire time. Set the feet at or inside of hip width, feet parallel or close, and track the knees directly over the big toes."},
-    {type:"ex", name:"Unilateral leg press on Hammer Horizontal", sets:1, reps:"10-15", tempo:"3-1-1-1", extra:"(Week 3, add a set)", status:null,
+    {type:"ex", name:"Unilateral leg press on Hammer Horizontal", muscle:"Quads", sets:1, reps:"10-15", tempo:"3-1-1-1", extra:"(Week 3, add a set)", status:null,
      tech:"As low of a foot placement as you can get with the greatest ROM. The goal is Quad not ham. set the seat back as far as possible while not compromising loading or comfortability."},
-    {type:"ex", name:"Split Squat  (quad focused)", sets:1, reps:"10--15", tempo:"3-2-1-1", extra:null, status:null,
+    {type:"ex", name:"Split Squat  (quad focused)", muscle:"Quads", sets:1, reps:"10--15", tempo:"3-2-1-1", extra:null, status:null,
      tech:"Rear foot elevated split squat. Hold a dumbbell in the opposite hand as the front leg. Back leg elevated on a bench or rig that around knee height. Allow the torso to rotate towards the front leg as you come down. Keep the back leg pressing down through the rig or bench and keep the back leg in line with the angle of the torso throughout."},
-    {type:"ex", name:"Leg extension", sets:1, reps:"12-15", tempo:"3-1-1-1", extra:null, status:null,
+    {type:"ex", name:"Leg extension", muscle:"Quads", sets:1, reps:"12-15", tempo:"3-1-1-1", extra:null, status:null,
      tech:"Lock yourself in hard. Set up with the upper leg slightly internally rotated just to reach a neutral position. Initiate with a contraction at the quad and move slowly."}
   ]},
   Push: { hex:"#FF7A1A", subtitle:"Push (Chest, Delt, + Back touch up after a few weeks if we move rest days)", items:[
-    {type:"ex", name:"Band resisted 90 degree internal external rot", sets:1, reps:"10 each", tempo:null, extra:null, status:null,
+    {type:"ex", name:"Band resisted 90 degree internal external rot", muscle:"Shoulders", sets:1, reps:"10 each", tempo:null, extra:null, status:null,
      tech:"Set up a band a few inches higher than the top of the shoulder. Hold the band in hand and turn away from it so it's pulling you backwards. Stand with the same side leg forward in a B stance, pack the ribcage down, tuck the pelvis, and create a packed shoulder position as if getting set to squat or for a barbell split squat. Get the arm out in line to the shoulder, abducted from the body to 90 degrees. Hold the band in hand and walk into the resistance that should be fighting you into internal rotation at the shoulder, let it but keep the upper arm in the exact same position aside from the rotation. Relax into the position and keep standing away to build more resistance, then slowly fight the arm into external rotation as far as you can get it, you hsould end up in a neutral pressing position. Then go back to the end range internal rotation again trying to help contract into it with the aid of the band. Once that is done, do the same with external rotation. Set up so the band is pulling you into external rotation, let it. Then resist and bring yourself as far into internal rotation as possible then slowly return to start and try to aid the band in getting even further back into external rotation. Repeat as many reps as needed of both. One done fully before the other."},
-    {type:"ex", name:"External rotation at 90 (by itself)", sets:1, reps:"10 each side", tempo:"3-1-3-1", extra:null, status:null,
+    {type:"ex", name:"External rotation at 90 (by itself)", muscle:"Shoulders", sets:1, reps:"10 each side", tempo:"3-1-3-1", extra:null, status:null,
      tech:"set up a band just below the height of your bottom rib. Wrap the band around the wrist of one hand while facing the band. Keep the elbow bent at 90 degress and put the elbow to the side of the shoulder in parallel to it. Pull up and back through the band by rotating the arm to get the knuckles as far back behind you as you can. Give a second hold at the top then return to the bottom."},
-    {type:"ex", name:"Bent over I's, Y's, and T's", sets:1, reps:"10 each", tempo:null, extra:null, status:null,
+    {type:"ex", name:"Bent over I's, Y's, and T's", muscle:"Rear Delts", sets:1, reps:"10 each", tempo:null, extra:null, status:null,
      tech:"Grab 2.5, 5, or 10 pound plates with one in each hand. Bend over to about 90 degrees at the hip with the spine tall and proud. I's are done with a neutral hand and shoulder position. Raise the straight, neutral arms overhead as far as you can get them and hold the isometric at the top. Move slowly back down to starting position and then bring the arms up and back behind you in the opposite direction then return to starting. The shoulder blades are to move in the way they naturally try to. T's, externally rotate the shoulder and go into slight t spine flexion while lettign the shoulders protract. All at once, raise the hands out to the corners of the room, extend the spine into neutral, and depress the scaps. Return to normal slowly. T's, externally rotate the shoulder and emulate the position for the Y's but direct the hands out straight to the sides instead of at an angle to the shoulder."},
-    {type:"ex", name:"15 degree incline dumbbell press or Smith machine**", sets:2, reps:"6--8, 8--10", tempo:"3-2-1-1", extra:null, status:null,
+    {type:"ex", name:"15 degree incline dumbbell press or Smith machine**", muscle:"Chest", sets:2, reps:"6--8, 8--10", tempo:"3-2-1-1", extra:null, status:null,
      tech:"Use Incline Bench, set cables low, slow eccentric"},
-    {type:"ex", name:"Incline Press Machine", sets:2, reps:"8--12", tempo:"3-2-1-1", extra:null, status:null,
+    {type:"ex", name:"Incline Press Machine", muscle:"Chest", sets:2, reps:"8--12", tempo:"3-2-1-1", extra:null, status:null,
      tech:"Get the grip in a position that allows you to control the direction your upper arms track. You should have the elbows track slightly forwards rather than directly out to the sides. Focus on depressing the shoulders moreso than retracting them. ROW the weight down on the eccentric."},
-    {type:"ex", name:"Pec Deck", sets:2, reps:"10-15", tempo:"3-2-1-1", extra:null, status:null,
+    {type:"ex", name:"Pec Deck", muscle:"Chest", sets:2, reps:"10-15", tempo:"3-2-1-1", extra:null, status:null,
      tech:"Keep the chest proud throughout. Let the elbows bend into the eccentric and allow the shoulder blades to retract and elevate slightly. Then straighten as you come forward without collapsing the chest."},
-    {type:"ex", name:"Dips", sets:1, reps:"AMRAP", tempo:"3-2-1-1", extra:null, status:null,
+    {type:"ex", name:"Dips", muscle:"Chest", sets:1, reps:"AMRAP", tempo:"3-2-1-1", extra:null, status:null,
      tech:"I want a nasty stretch here"},
-    {type:"ex", name:"Cross cable tricep extension", sets:3, reps:"12--15", tempo:"3-2-3-2", extra:null, status:null,
+    {type:"ex", name:"Cross cable tricep extension", muscle:"Triceps", sets:3, reps:"12--15", tempo:"3-2-3-2", extra:null, status:null,
      tech:"Set a close cable rig with both cables just above shoulder height, grab the opposite side cable and cross them. Stand at a distance from the cable stack that makes the line of the fully flexed arm nearly 90 degrees to the cable in the start position."},
-    {type:"ex", name:"Machine Row of Choice superset with Overhand Lat Pulldowns", sets:2, reps:"10--15 each", tempo:"3-2-1-1", extra:null, status:"REMOVE FOR NOW",
+    {type:"ex", name:"Machine Row of Choice superset with Overhand Lat Pulldowns", muscle:"Back", sets:2, reps:"10--15 each", tempo:"3-2-1-1", extra:null, status:"REMOVE FOR NOW",
      tech:"This is for a small hit of back volume for a 2nd stimulus this week!"},
-    {type:"ex", name:"Standing Lateral Raise Machine or DB Lateral Raises", sets:2, reps:"10--15", tempo:"3-2-3-2", extra:null, status:null,
+    {type:"ex", name:"Standing Lateral Raise Machine or DB Lateral Raises", muscle:"Side Delts", sets:2, reps:"10--15", tempo:"3-2-3-2", extra:null, status:null,
      tech:"Pause at top and lower slowly!"},
-    {type:"ex", name:"Curling Variation of Choice", sets:3, reps:"12--15", tempo:"3-2-3-2", extra:null, status:null,
+    {type:"ex", name:"Curling Variation of Choice", muscle:"Biceps", sets:3, reps:"12--15", tempo:"3-2-3-2", extra:null, status:null,
      tech:"DB, Machine, Cable, all fine here"}
   ]},
   Pull: { hex:"#F06A0A", subtitle:"Pull, Side Delts", items:[
-    {type:"ex", name:"Band resisted 90 degree internal external rot", sets:1, reps:"10 each", tempo:null, extra:null, status:null,
+    {type:"ex", name:"Band resisted 90 degree internal external rot", muscle:"Shoulders", sets:1, reps:"10 each", tempo:null, extra:null, status:null,
      tech:"Set up a band a few inches higher than the top of the shoulder. Hold the band in hand and turn away from it so it's pulling you backwards. Stand with the same side leg forward in a B stance, pack the ribcage down, tuck the pelvis, and create a packed shoulder position as if getting set to squat or for a barbell split squat. Get the arm out in line to the shoulder, abducted from the body to 90 degrees. Hold the band in hand and walk into the resistance that should be fighting you into internal rotation at the shoulder, let it but keep the upper arm in the exact same position aside from the rotation. Relax into the position and keep standing away to build more resistance, then slowly fight the arm into external rotation as far as you can get it, you hsould end up in a neutral pressing position. Then go back to the end range internal rotation again trying to help contract into it with the aid of the band. Once that is done, do the same with external rotation. Set up so the band is pulling you into external rotation, let it. Then resist and bring yourself as far into internal rotation as possible then slowly return to start and try to aid the band in getting even further back into external rotation. Repeat as many reps as needed of both. One done fully before the other."},
-    {type:"ex", name:"Bent over I's, Y's, and T's", sets:1, reps:"10 each", tempo:null, extra:null, status:null,
+    {type:"ex", name:"Bent over I's, Y's, and T's", muscle:"Rear Delts", sets:1, reps:"10 each", tempo:null, extra:null, status:null,
      tech:"Grab 2.5, 5, or 10 pound plates with one in each hand. Bend over to about 90 degrees at the hip with the spine tall and proud. I's are done with a neutral hand and shoulder position. Raise the straight, neutral arms overhead as far as you can get them and hold the isometric at the top. Move slowly back down to starting position and then bring the arms up and back behind you in the opposite direction then return to starting. The shoulder blades are to move in the way they naturally try to. T's, externally rotate the shoulder and go into slight t spine flexion while lettign the shoulders protract. All at once, raise the hands out to the corners of the room, extend the spine into neutral, and depress the scaps. Return to normal slowly. T's, externally rotate the shoulder and emulate the position for the Y's but direct the hands out straight to the sides instead of at an angle to the shoulder."},
-    {type:"ex", name:"Hanging leg raise", sets:3, reps:"AMRAP", tempo:"3-1-3-1", extra:null, status:null,
+    {type:"ex", name:"Hanging leg raise", muscle:"Core", sets:3, reps:"AMRAP", tempo:"3-1-3-1", extra:null, status:null,
      tech:"Grip just outside the shoulders. Deadhang, hands are hooks and arms are ropes. Depress the scaps and lock them down. Posterior tilt the pelvis under you (scared dog position). Slowly lift the straightened legs out as far from you as you can, don't think \"up\". pause, come down slow. Don't let shoulders cave or the hips turn behind you \"instahoe-duckbutt position)"},
-    {type:"ex", name:"Single Arm Cable PD or machine variation ie. Nautilus", sets:2, reps:"8--12", tempo:"3-2-1-1", extra:null, status:null,
+    {type:"ex", name:"Single Arm Cable PD or machine variation ie. Nautilus", muscle:"Back", sets:2, reps:"8--12", tempo:"3-2-1-1", extra:null, status:null,
      tech:"Kneel with the working side leg up under the knee pad and that whole upper leg/hip pressed against the side of the pulldown station seat. Use the non working arm to grab onto the center of the leg pad piece wherever you can get a good handhold. Strap yourself into it like your arm is a seatbelt. Keep the spine in neutral but get a slight crunch on the working side to lock the ribcage in place. Lean the torso back slightly so you're not perfectly vertical. Pull with the elbow tracking forward and the upper arm rubbing up against your ribcage."},
-    {type:"ex", name:"Machine Row for lats (pronated grip, grab close to middle)", sets:1, reps:"8--12", tempo:"3-2-1-1", extra:null, status:null,
+    {type:"ex", name:"Machine Row for lats (pronated grip, grab close to middle)", muscle:"Back", sets:1, reps:"8--12", tempo:"3-2-1-1", extra:null, status:null,
      tech:"Set the seat up low enough that the handles/hands start at the height of the shoulders so the downward path is more exaggerated. Keep the chest proud throughout but do allow the shoulders to protract forward in the stretch."},
-    {type:"ex", name:"Assisted Overhand Pullups", sets:2, reps:"15--20", tempo:"3-2-1-1", extra:null, status:null,
+    {type:"ex", name:"Assisted Overhand Pullups", muscle:"Back", sets:2, reps:"15--20", tempo:"3-2-1-1", extra:null, status:null,
      tech:"Do 3 lengthened partial reps at the end of each set. Cable PD neutral grip is another option"},
-    {type:"ex", name:"Bilateral high arm angle upper back row - precise chest support row", sets:2, reps:"7-9, 10-15", tempo:"3-1-1-1", extra:"Finish partials with scap shrug and retraction", status:"If upper back focused session",
+    {type:"ex", name:"Bilateral high arm angle upper back row - precise chest support row", muscle:"Back", sets:2, reps:"7-9, 10-15", tempo:"3-1-1-1", extra:"Finish partials with scap shrug and retraction", status:"If upper back focused session",
      tech:"Set the seat up fairly low but high enough that you can get your shoulders to wrap around the top of the chest pad as you get into the stretched position. Get the most total shoulder blade travel as possible. Elbows track out to the sides."},
-    {type:"ex", name:"Machine Row (Upper back focused, elbows out to side)", sets:1, reps:"12--15", tempo:"3-2-1-1", extra:null, status:null,
+    {type:"ex", name:"Machine Row (Upper back focused, elbows out to side)", muscle:"Back", sets:1, reps:"12--15", tempo:"3-2-1-1", extra:null, status:null,
      tech:"Prime machine with cam setting on 3 is a great one OR chest supported T bar"},
-    {type:"ex", name:"Cable Y Lateral Raises", sets:2, reps:"15--20", tempo:"3-1-1-1", extra:null, status:null,
+    {type:"ex", name:"Cable Y Lateral Raises", muscle:"Rear Delts", sets:2, reps:"15--20", tempo:"3-1-1-1", extra:null, status:null,
      tech:"Lower slow and come up forcefully (myorep match set 1)"},
-    {type:"ex", name:"Cable Rope Facepulls", sets:2, reps:"15--25", tempo:"3-1-1-1", extra:null, status:"remove for now",
+    {type:"ex", name:"Cable Rope Facepulls", muscle:"Rear Delts", sets:2, reps:"15--25", tempo:"3-1-1-1", extra:null, status:"remove for now",
      tech:"2nd set, make this a rest pause."},
-    {type:"ex", name:"RD cable fly bilateral on free motion cable or close cable stack", sets:2, reps:"12--15", tempo:"3-2-1-2", extra:null, status:null,
+    {type:"ex", name:"RD cable fly bilateral on free motion cable or close cable stack", muscle:"Rear Delts", sets:2, reps:"12--15", tempo:"3-2-1-2", extra:null, status:null,
      tech:"Set the cable cams just above the shoulders, stand back while facing the cable stack. I'd recommend using a cuff for this to use as a grip so you can keep a neutral hand and wrist. Elevate the shoulder blades and keep them there. Press out to the walls with a mostly outward path but slightly downwards as well."},
-    {type:"ex", name:"Curling Variation of Choice (isolation based)", sets:2, reps:"15--20", tempo:"3-2-3-2", extra:null, status:null,
+    {type:"ex", name:"Curling Variation of Choice (isolation based)", muscle:"Biceps", sets:2, reps:"15--20", tempo:"3-2-3-2", extra:null, status:null,
      tech:"Machine preacher single arm would be a good one here"}
   ]},
   Arms: { hex:"#D65C05", subtitle:"Arms + Rear delts", items:[
-    {type:"ex", name:"Cable Press (Chest)", sets:2, reps:"10--15", tempo:"3-2-1-3", extra:null, status:null,
+    {type:"ex", name:"Cable Press (Chest)", muscle:"Chest", sets:2, reps:"10--15", tempo:"3-2-1-3", extra:null, status:null,
      tech:"75 degree utility bench - pause 3 seconds at top and bottom"},
-    {type:"ex", name:"Side Laterals (Machine or standing)", sets:3, reps:"10--15", tempo:"3-1-1-1", extra:null, status:null,
+    {type:"ex", name:"Side Laterals (Machine or standing)", muscle:"Side Delts", sets:3, reps:"10--15", tempo:"3-1-1-1", extra:null, status:null,
      tech:"Think out not up"},
-    {type:"ex", name:"internally rotated arm, cross body tricep extension SA", sets:2, reps:"10--15", tempo:"3-2-1-1", extra:null, status:null,
+    {type:"ex", name:"internally rotated arm, cross body tricep extension SA", muscle:"Triceps", sets:2, reps:"10--15", tempo:"3-2-1-1", extra:null, status:null,
      tech:"Set the cable just above head height and turn the body so the non working side is directly in parallel to the cable cam shaft. Use the non working arm to push yourself away to brace. Internally rotate the working arm so your palm is fully pronated and turned towards the body. Lean forward slightly at the hip to keep the body out of the way of the hand. Elbow is pointed out to the side at about 30 degress abduction of the shoulder and kept there."},
-    {type:"ex", name:"Standing single arm tricep extension - shoulder height- straight forward from the shoulder", sets:2, reps:"10--15", tempo:"3-2-1-2", extra:null, status:null,
+    {type:"ex", name:"Standing single arm tricep extension - shoulder height- straight forward from the shoulder", muscle:"Triceps", sets:2, reps:"10--15", tempo:"3-2-1-2", extra:null, status:null,
      tech:"Cams just slightly above shoulder height. Elbows straight in front of the shoulders. Keep the elbows there and extend the elbow."},
-    {type:"ex", name:"Press for triceps (close grip smith / Nautilus nitro chest press neutral grip)", sets:3, reps:"10--15", tempo:"3-2-1-1", extra:null, status:null,
+    {type:"ex", name:"Press for triceps (close grip smith / Nautilus nitro chest press neutral grip)", muscle:"Triceps", sets:3, reps:"10--15", tempo:"3-2-1-1", extra:null, status:null,
      tech:"Set up with your grip slightly closer than you would for a chest press"},
-    {type:"ex", name:"Machine preacher curl single arm", sets:3, reps:"10--15", tempo:"3-2-3-2", extra:null, status:null,
+    {type:"ex", name:"Machine preacher curl single arm", muscle:"Biceps", sets:3, reps:"10--15", tempo:"3-2-3-2", extra:null, status:null,
      tech:"Turn the upper body away from the working side in the set up."},
-    {type:"ex", name:"Single arm incline cable curl hammer grip", sets:2, reps:"10--15", tempo:"3-2-3-2", extra:null, status:null,
+    {type:"ex", name:"Single arm incline cable curl hammer grip", muscle:"Biceps", sets:2, reps:"10--15", tempo:"3-2-3-2", extra:null, status:null,
      tech:"Cable cam set low and stand with the same side leg forward and resist rotating towards the working side. Chest proud, depressed shoulders, no heightened sternum angle."},
-    {type:"ex", name:"Bilateral cable curl supinated, directly over cables", sets:2, reps:"10--15", tempo:"3-2-3-2", extra:null, status:null,
+    {type:"ex", name:"Bilateral cable curl supinated, directly over cables", muscle:"Biceps", sets:2, reps:"10--15", tempo:"3-2-3-2", extra:null, status:null,
      tech:"Stand over cable cams set low to the ground. Keep a tall posture. Curl by keeping the upper arm slightly in front of the ribs and don't allow them to move as you curl. Partials to full failure"},
-    {type:"ex", name:"Lateral of choice (cable) lateral OR Machine lateral", sets:3, reps:"10--15", tempo:"4-2-4-2", extra:null, status:null,
+    {type:"ex", name:"Lateral of choice (cable) lateral OR Machine lateral", muscle:"Side Delts", sets:3, reps:"10--15", tempo:"4-2-4-2", extra:null, status:null,
      tech:"I want these done pretty slow, really focus on the bottom of the movement. Partials to full failure"},
-    {type:"ex", name:"Reverse Pec Deck (if prime, setting 5)", sets:3, reps:"10--15", tempo:"3-2-1-2", extra:null, status:null,
+    {type:"ex", name:"Reverse Pec Deck (if prime, setting 5)", muscle:"Rear Delts", sets:3, reps:"10--15", tempo:"3-2-1-2", extra:null, status:null,
      tech:"Lean the torso forward into the chest pad so the upper chest is in contact. Keep the upper arms mostly straight. Keep the shoulders set in elevation and retraction and leave them there."}
   ]}
 };
@@ -370,7 +392,7 @@ function ensureDraft(sessionKey){
   SESSIONS[sessionKey].items.forEach(it=>{
     if(it.type!=="ex") return;
     const n = it.sets || 1;
-    entries[it.name] = Array.from({length:n}, ()=>({w:"", r:""}));
+    entries[it.name] = Array.from({length:n}, ()=>({w:"", r:"", rir:""}));
   });
   draft[sessionKey] = {date:new Date().toISOString(), entries, notes:""};
   return draft[sessionKey];
@@ -540,14 +562,14 @@ function renderRestSlot(){
 
 /* ================= EXPORT ================= */
 function exportCSV(){
-  const rows = [["Date","Session","Exercise","Set","Weight ("+UNIT+")","Reps","Notes"]];
+  const rows = [["Date","Session","Exercise","Set","Weight ("+UNIT+")","Reps","RIR","Notes"]];
   Object.keys(history).forEach(key=>{
     (history[key]||[]).forEach(entry=>{
       const dateStr = new Date(entry.date).toISOString().slice(0,16).replace("T"," ");
       Object.entries(entry.entries).forEach(([exName, sets])=>{
         sets.forEach((set,i)=>{
           if(set.w==="" || set.r==="") return;
-          rows.push([dateStr, key, exName, i+1, set.w, set.r, entry.notes||""]);
+          rows.push([dateStr, key, exName, i+1, set.w, set.r, set.rir||"", entry.notes||""]);
         });
       });
     });
@@ -624,6 +646,7 @@ function renderHome(){
         <div class="kicker">Rebound 2026</div>
         <h1>Gym Tracker</h1>
       </div>
+      ${renderPrepCard()}
       <div class="rotation-strip">${chips}</div>
       <details class="info">
         <summary>Coach's Frequency Guidance</summary>
@@ -631,12 +654,15 @@ function renderHome(){
         <p>Pattern: 2 on / 1 off / 3 on / 1 off</p>
       </details>
       <div class="session-grid">${cards}</div>
+      ${renderVolumeBlock()}
       ${recent.length ? `
       <div class="recent-header">Recent Sessions</div>
       <div class="recent-list">${recentRows}</div>` : ""}
       <a class="export-link" data-export href="#">Export all logged data (CSV)</a>
     </div>
   `;
+  const prepBtn = app.querySelector("[data-setprep]"); if(prepBtn) prepBtn.addEventListener("click", showPrepForm);
+  const prepEdit = app.querySelector("[data-editprep]"); if(prepEdit) prepEdit.addEventListener("click", showPrepForm);
   app.querySelectorAll("[data-open]").forEach(b=>{
     b.addEventListener("click", ()=>{ view = {type:"session", session:b.dataset.open}; render(); });
   });
@@ -698,8 +724,10 @@ function renderWorkoutForm(key, mode, index){
           <input type="number" inputmode="decimal" placeholder="${UNIT}" enterkeyhint="next" ${isView ? "disabled" : ""}
             data-ex="${it.name}" data-set="${i}" data-field="w" value="${set.w}">
           <span class="set-x">&times;</span>
-          <input type="number" inputmode="numeric" placeholder="reps" enterkeyhint="${i===entrySets.length-1?'done':'next'}" ${isView ? "disabled" : ""}
+          <input type="number" inputmode="numeric" placeholder="reps" enterkeyhint="next" ${isView ? "disabled" : ""}
             data-ex="${it.name}" data-set="${i}" data-field="r" value="${set.r}">
+          <input type="number" inputmode="numeric" placeholder="RIR" min="0" max="5" class="rir-input" enterkeyhint="${i===entrySets.length-1?'done':'next'}" ${isView ? "disabled" : ""}
+            data-ex="${it.name}" data-set="${i}" data-field="rir" value="${set.rir||''}">
         </div>
         ${isLive ? `<span class="set-last">LAST<br>${lastLabel}</span><span class="set-badge" id="badge-${cssSafe(it.name)}-${i}"></span>` : ""}
       </div>`;
@@ -853,6 +881,131 @@ function updateProgressPill(key){
   pill.textContent = total ? `${up}/${total} SETS IMPROVED` : "LOG YOUR FIRST SET";
 }
 
+/* ================= WEEKLY MUSCLE VOLUME ================= */
+const VOLUME_ORDER = ["Chest","Back","Quads","Hamstrings","Side Delts","Rear Delts","Biceps","Triceps","Core","Adductors","Shoulders"];
+function computeWeeklyVolume(){
+  const cutoff = Date.now() - 7*86400000;
+  const totals = {};
+  Object.keys(SESSIONS).forEach(key=>{
+    const exMuscle = {};
+    SESSIONS[key].items.forEach(it=>{ if(it.type==="ex") exMuscle[it.name] = it.muscle || "Other"; });
+    (history[key]||[]).forEach(entry=>{
+      if(new Date(entry.date).getTime() < cutoff) return;
+      Object.entries(entry.entries).forEach(([exName, sets])=>{
+        const muscle = exMuscle[exName] || "Other";
+        const n = sets.filter(s=>s.w!==""&&s.r!=="").length;
+        if(n>0) totals[muscle] = (totals[muscle]||0) + n;
+      });
+    });
+  });
+  return totals;
+}
+function renderVolumeBlock(){
+  const totals = computeWeeklyVolume();
+  const keys = VOLUME_ORDER.filter(m=>totals[m]);
+  if(!keys.length) return "";
+  const rows = keys.map(m=>{
+    const n = totals[m];
+    const pct = Math.min(100, Math.round((n/20)*100));
+    return `
+    <div class="volume-row">
+      <span class="volume-name">${m}</span>
+      <span class="volume-bar-track"><span class="volume-bar-fill" style="width:${pct}%;"></span></span>
+      <span class="volume-count">${n}</span>
+    </div>`;
+  }).join("");
+  return `
+  <div class="recent-header">This Week's Volume (sets)</div>
+  <div class="volume-block">${rows}</div>
+  <div class="volume-caption">Rough guideline: ~10-20 hard sets per muscle per week</div>`;
+}
+
+/* ================= PREP / EVENT COUNTDOWN ================= */
+const PREP_KEY = "gymtracker_prep";
+function loadPrep(){ return loadJSON(PREP_KEY, null); }
+function computeWeeksOut(dateStr){
+  const target = new Date(dateStr+"T00:00:00");
+  const now = new Date(); now.setHours(0,0,0,0);
+  const days = Math.round((target-now)/86400000);
+  return {days, weeks: Math.ceil(Math.abs(days)/7)};
+}
+function renderPrepCard(){
+  const prep = loadPrep();
+  if(!prep || !prep.eventDate){
+    return `<button class="prep-card" data-setprep>Set Competition / Event Date &rsaquo;</button>`;
+  }
+  const {days, weeks} = computeWeeksOut(prep.eventDate);
+  const label = days<0 ? "Event has passed" : (days===0 ? "Today" : `${weeks} week${weeks!==1?"s":""} out &middot; ${days} day${days!==1?"s":""}`);
+  return `
+  <div class="prep-card active">
+    <div class="prep-top">
+      <span class="prep-label">${prep.phase||"Prep"}</span>
+      <button class="prep-edit" data-editprep>Edit</button>
+    </div>
+    <div class="prep-count">${label}</div>
+  </div>`;
+}
+function showPrepForm(){
+  const prep = loadPrep() || {eventDate:"", phase:"Building"};
+  const phases = ["Off-Season","Building","Prep","Peak Week"];
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = `
+    <div class="modal-card">
+      <div class="modal-msg">Competition / Event</div>
+      <label class="field-label">Date</label>
+      <input type="date" id="prepDateInput" class="field-input" value="${prep.eventDate||''}">
+      <label class="field-label">Phase</label>
+      <select id="prepPhaseInput" class="field-input">
+        ${phases.map(p=>`<option value="${p}" ${prep.phase===p?"selected":""}>${p}</option>`).join("")}
+      </select>
+      <div class="modal-actions">
+        <button class="modal-btn modal-cancel" data-cancel>Cancel</button>
+        <button class="modal-btn" style="background:var(--orange); color:#1A0D00;" data-saveprep>Save</button>
+      </div>
+      ${prep.eventDate ? `<button class="prep-remove" data-clearprep>Remove Event</button>` : ""}
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector("[data-cancel]").addEventListener("click", ()=>overlay.remove());
+  overlay.addEventListener("click", (e)=>{ if(e.target===overlay) overlay.remove(); });
+  overlay.querySelector("[data-saveprep]").addEventListener("click", ()=>{
+    const d = document.getElementById("prepDateInput").value;
+    const p = document.getElementById("prepPhaseInput").value;
+    if(!d){ toast("Pick a date first"); return; }
+    saveJSON(PREP_KEY, {eventDate:d, phase:p});
+    overlay.remove();
+    render();
+  });
+  const clearBtn = overlay.querySelector("[data-clearprep]");
+  if(clearBtn) clearBtn.addEventListener("click", ()=>{
+    saveJSON(PREP_KEY, null);
+    overlay.remove();
+    render();
+  });
+}
+
+/* ================= DELOAD SIGNAL ================= */
+function checkDeloadSignal(key){
+  const arr = history[key];
+  if(!arr || arr.length<3) return false;
+  let flatCount = 0;
+  for(let idx=arr.length-3; idx<arr.length; idx++){
+    const entry = arr[idx];
+    let up=0, total=0;
+    Object.keys(entry.entries).forEach(exName=>{
+      const priorSets = lastEntryFor(key, exName, idx);
+      entry.entries[exName].forEach((set,i)=>{
+        if(set.w==="" || set.r==="") return;
+        total++;
+        const cmp = compare(set.w, set.r, priorSets ? priorSets[i] : null);
+        if(cmp && cmp.icon==="\u25B2") up++;
+      });
+    });
+    if(total>0 && (up/total) < 0.3) flatCount++;
+  }
+  return flatCount>=2;
+}
+
 function computeSessionResults(key, entry){
   const s = SESSIONS[key];
   let up=0, same=0, down=0, total=0;
@@ -871,7 +1024,7 @@ function computeSessionResults(key, entry){
         else if(cmp.icon==="\u2013") same++;
         else if(cmp.icon==="\u25BC") down++;
       }
-      setResults.push({i, w:set.w, r:set.r, cmp});
+      setResults.push({i, w:set.w, r:set.r, rir:set.rir, cmp});
     });
     if(setResults.length) exercises.push({name:it.name, sets:setResults});
   });
@@ -918,18 +1071,18 @@ function finishSession(key){
   delete draft[key];
   saveJSON(HIST_KEY, history);
   saveJSON(DRAFT_KEY, draft);
-  view = {type:"summary", session:key, results, entry:d};
+  view = {type:"summary", session:key, results, entry:d, deload: checkDeloadSignal(key)};
   render();
 }
 
 function renderSummary(){
-  const {session:key, results, entry} = view;
+  const {session:key, results, entry, deload} = view;
   const exList = results.exercises.map(ex=>{
     const setLines = ex.sets.map(s=>{
       const cmp = s.cmp;
       const label = cmp ? (cmp.icon==="NEW" ? "NEW" : cmp.icon+" "+cmp.label) : "";
       const color = cmp ? cmp.color : "var(--text-dim)";
-      return `<div class="summary-set"><span>Set ${s.i+1}: ${s.w}${UNIT} &times; ${s.r}</span><span style="color:${color}; font-weight:700;">${label}</span></div>`;
+      return `<div class="summary-set"><span>Set ${s.i+1}: ${s.w}${UNIT} &times; ${s.r}${s.rir!==""&&s.rir!==undefined ? " @RIR"+s.rir : ""}</span><span style="color:${color}; font-weight:700;">${label}</span></div>`;
     }).join("");
     return `<div class="summary-ex"><div class="summary-ex-name">${ex.name}</div>${setLines}</div>`;
   }).join("");
@@ -945,6 +1098,7 @@ function renderSummary(){
         <div><b style="color:var(--same)">${results.same}</b>SAME</div>
         <div><b style="color:var(--down)">${results.down}</b>DOWN</div>
       </div>
+      ${deload ? `<div class="deload-note">Progress has looked flat across your last few ${key} sessions. Might be worth a deload week soon.</div>` : ""}
       ${entry.notes ? `<div class="summary-notes">${entry.notes}</div>` : ""}
       <div class="summary-list">${exList || '<div style="color:var(--text-faint); font-size:13px; text-align:center;">No sets logged</div>'}</div>
       <button class="btn btn-primary" data-done style="width:100%;">Done</button>
@@ -960,7 +1114,7 @@ function renderHistory(key){
   const cards = arr.length ? arr.slice().reverse().map((entry, revIdx)=>{
     const idx = arr.length-1-revIdx;
     const rows = Object.entries(entry.entries).filter(([,sets])=>sets.some(x=>x.w!=="" && x.r!=="")).map(([name,sets])=>{
-      const str = sets.filter(x=>x.w!=="" && x.r!=="").map(x=>`${x.w}&times;${x.r}`).join(", ");
+      const str = sets.filter(x=>x.w!=="" && x.r!=="").map(x=>`${x.w}&times;${x.r}${x.rir!==""&&x.rir!==undefined ? " @"+x.rir : ""}`).join(", ");
       return `<div class="hist-ex-row"><span class="hist-ex-name">${name}</span><span class="hist-ex-sets">${str}</span></div>`;
     }).join("");
     const setCount = Object.values(entry.entries).reduce((a,sets)=>a+sets.filter(x=>x.w!==""&&x.r!=="").length,0);
