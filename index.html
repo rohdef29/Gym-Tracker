@@ -46,6 +46,7 @@
   .status-row{display:flex; align-items:center; gap:10px; padding:10px 16px; border-bottom:1px solid var(--border); background:var(--surface);}
   .stopwatch{font-family:var(--mono); font-size:13px; color:var(--text-dim); display:flex; align-items:center; gap:6px; flex-shrink:0;}
   .stopwatch b{color:var(--text); font-size:14px;}
+  .save-indicator{font-family:var(--mono); font-size:10.5px; color:var(--text-faint); letter-spacing:.02em;}
   .rest-idle{margin-left:auto; font-family:var(--mono); font-size:11.5px; font-weight:700; letter-spacing:.03em; color:var(--orange); background:var(--orange-soft); border:1px solid #5A3A18; padding:6px 12px; border-radius:8px;}
   .rest-active{margin-left:auto; display:flex; align-items:center; gap:6px; background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:5px 6px 5px 12px;}
   .rest-active.done{background:var(--orange-soft); border-color:var(--orange);}
@@ -360,13 +361,27 @@ let editBuffer = null; // {key, index, data} - keeps unsaved edit-mode changes s
 let view = {type:"home"};
 let saveTimer = null;
 
+let lastSaveTime = null;
 function scheduleSave(){
   clearTimeout(saveTimer);
   saveJSON(DRAFT_KEY, draft);
+  markSaved();
 }
 function flushSave(){
   clearTimeout(saveTimer);
   saveJSON(DRAFT_KEY, draft);
+  markSaved();
+}
+function markSaved(){
+  lastSaveTime = Date.now();
+  updateSaveIndicator();
+}
+function updateSaveIndicator(){
+  const el = document.getElementById("saveIndicator");
+  if(!el) return;
+  if(!lastSaveTime){ el.textContent = "Not saved yet"; return; }
+  const sec = Math.floor((Date.now()-lastSaveTime)/1000);
+  el.textContent = sec<2 ? "Saved just now" : (sec<60 ? `Saved ${sec}s ago` : `Saved ${Math.floor(sec/60)}m ago`);
 }
 
 /* ================= HELPERS ================= */
@@ -418,6 +433,8 @@ function ensureDraft(sessionKey){
     entries[it.name] = Array.from({length:n}, ()=>({w:"", r:"", rir:""}));
   });
   draft[sessionKey] = {date:new Date().toISOString(), entries, notes:""};
+  saveJSON(DRAFT_KEY, draft);
+  markSaved();
   return draft[sessionKey];
 }
 function ensureEditBuffer(key, index){
@@ -505,13 +522,20 @@ function showConfirm(msg, onConfirm, confirmLabel){
 
 /* ================= TIMERS (live workout mode only) ================= */
 let stopwatchInterval = null;
+let saveIndicatorInterval = null;
 let restTimer = null;
 let audioCtx = null;
 
 function clearAllTimers(){
   if(stopwatchInterval){ clearInterval(stopwatchInterval); stopwatchInterval = null; }
+  if(saveIndicatorInterval){ clearInterval(saveIndicatorInterval); saveIndicatorInterval = null; }
   if(restTimer && restTimer.interval){ clearInterval(restTimer.interval); }
   restTimer = null;
+}
+function startSaveIndicatorTicker(){
+  if(saveIndicatorInterval){ clearInterval(saveIndicatorInterval); saveIndicatorInterval = null; }
+  updateSaveIndicator();
+  saveIndicatorInterval = setInterval(updateSaveIndicator, 1000);
 }
 function startStopwatch(key){
   if(stopwatchInterval){ clearInterval(stopwatchInterval); stopwatchInterval = null; }
@@ -781,7 +805,7 @@ function renderWorkoutForm(key, mode, index){
   const isView = mode === "view";
   const isEdit = mode === "edit";
   let data;
-  if(isLive){ ensureDraft(key); data = draft[key]; }
+  if(isLive){ ensureDraft(key); data = draft[key]; markSaved(); }
   else if(isEdit){ data = ensureEditBuffer(key, index); }
   else { data = JSON.parse(JSON.stringify(history[key][index])); if(data.notes===undefined) data.notes=""; }
 
@@ -853,6 +877,7 @@ function renderWorkoutForm(key, mode, index){
     ${isLive ? `
     <div class="status-row">
       <span class="stopwatch">TIME <b id="stopwatchDisplay">00:00</b></span>
+      <span class="save-indicator" id="saveIndicator">Saved just now</span>
       <span id="restSlot"></span>
     </div>` : ""}
     ${(isLive && history[key] && history[key].length) ? `
@@ -905,6 +930,7 @@ function renderWorkoutForm(key, mode, index){
     if(repeatBtn) repeatBtn.addEventListener("click", ()=>repeatLastSession(key));
     renderRestSlot();
     startStopwatch(key);
+    startSaveIndicatorTicker();
   } else if(isEdit){
     app.querySelector("[data-canceledit]").addEventListener("click", ()=>{ editBuffer=null; view={type:"history", session:key}; render(); });
     app.querySelector("[data-save]").addEventListener("click", ()=>{
