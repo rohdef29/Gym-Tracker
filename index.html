@@ -107,6 +107,12 @@
   .prep-remove{width:100%; margin-top:10px; font-size:12px; color:var(--down); text-align:center; padding:8px; font-weight:700; letter-spacing:.02em;}
   .field-label{font-size:11px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.05em; display:block; margin-bottom:5px; font-weight:700;}
   .field-input{width:100%; background:var(--surface-2); border:1px solid var(--border); color:var(--text); border-radius:8px; padding:10px; font-family:var(--ui); font-size:14px; margin-bottom:14px;}
+  .add-ex-btn{width:100%; padding:14px; margin-top:4px; border-radius:12px; border:1px dashed var(--border); background:transparent; color:var(--text-dim); font-size:12.5px; font-weight:700; letter-spacing:.03em; text-transform:uppercase;}
+  .hidden-ex-block{background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:10px 14px; margin-bottom:10px;}
+  .hidden-ex-block summary{font-size:11.5px; font-weight:700; letter-spacing:.03em; text-transform:uppercase; color:var(--text-faint); cursor:pointer; list-style:none;}
+  .hidden-ex-block summary::-webkit-details-marker{display:none;}
+  .hidden-ex-row{display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-top:1px solid var(--border); margin-top:8px; font-size:12.5px; color:var(--text-dim);}
+  .hidden-ex-row button{font-size:11px; font-weight:700; letter-spacing:.03em; text-transform:uppercase; color:var(--orange);}
 
   .volume-block{display:flex; flex-direction:column; gap:9px; margin-top:4px;}
   .volume-row{display:flex; align-items:center; gap:10px;}
@@ -150,6 +156,10 @@
   .ex-note summary{font-size:11.5px; font-weight:700; letter-spacing:.03em; text-transform:uppercase; color:var(--text-faint); cursor:pointer; list-style:none;}
   .ex-note summary::-webkit-details-marker{display:none;}
   .ex-note p{font-size:12.5px; color:var(--text-dim); line-height:1.55; margin:8px 0 2px; padding-right:4px;}
+  .ex-setting-note{
+    width:100%; min-height:44px; margin-top:8px; background:var(--surface-2); border:1px solid var(--border); color:var(--text);
+    border-radius:8px; padding:9px 10px; font-family:var(--ui); font-size:12.5px; line-height:1.4; resize:vertical;
+  }
   .hold-btn{font-family:var(--mono); font-size:10.5px; font-weight:700; letter-spacing:.03em; text-transform:uppercase; color:var(--orange); background:var(--orange-soft); border:1px solid #5A3A18; padding:5px 10px; border-radius:7px; margin-top:8px; display:inline-block;}
 
   .set-row{display:flex; align-items:center; gap:8px; padding:9px 14px; border-top:1px solid var(--border);}
@@ -157,6 +167,12 @@
   .set-label.is-warmup{color:var(--orange); font-weight:800;}
   .set-row.is-warmup{opacity:.72;}
   .set-row.is-warmup .set-inputs input{border-color:#5A3A18;}
+  .set-row.is-skip{opacity:.5;}
+  .set-label.is-skip{color:var(--down);}
+  .set-remove{font-size:16px; color:var(--text-faint); padding:0 4px; flex-shrink:0;}
+  .ex-foot{display:flex; align-items:center; gap:14px; padding:10px 14px; border-top:1px solid var(--border);}
+  .add-set-btn{font-size:11.5px; font-weight:700; letter-spacing:.03em; text-transform:uppercase; color:var(--orange);}
+  .remove-ex-btn{font-size:11.5px; font-weight:700; letter-spacing:.03em; text-transform:uppercase; color:var(--down); margin-left:auto;}
   .set-inputs{display:flex; align-items:center; gap:6px; flex:1;}
   .set-inputs input{
     width:100%; min-width:0; background:var(--surface-2); border:1px solid var(--surface-3); color:var(--text);
@@ -340,6 +356,100 @@ const SESSIONS = {
   ]}
 };
 const ROTATION = ["Legs","Push","Pull","Arms","Push","Pull","Arms"];
+
+/* ================= CUSTOM EXERCISES (user-added, layered on top of the coach's plan) ================= */
+const CUSTOM_EX_KEY = "gymtracker_custom_exercises";
+function loadCustomExercises(){ return loadJSON(CUSTOM_EX_KEY, {}); }
+function saveCustomExercises(obj){ saveJSON(CUSTOM_EX_KEY, obj); }
+const EXNOTES_KEY = "gymtracker_exercise_notes";
+function loadExerciseNotes(){ return loadJSON(EXNOTES_KEY, {}); }
+function saveExerciseNotesMap(obj){ saveJSON(EXNOTES_KEY, obj); }
+function getExerciseNote(sessionKey, exName){
+  return loadExerciseNotes()[sessionKey+"|"+exName] || "";
+}
+function setExerciseNote(sessionKey, exName, text){
+  const all = loadExerciseNotes();
+  const k = sessionKey+"|"+exName;
+  if(text) all[k] = text; else delete all[k];
+  saveExerciseNotesMap(all);
+}
+
+const HIDDEN_KEY = "gymtracker_hidden_exercises";
+function loadHidden(){ return loadJSON(HIDDEN_KEY, {}); }
+function saveHidden(obj){ saveJSON(HIDDEN_KEY, obj); }
+function hideExercise(key, name){
+  const h = loadHidden();
+  if(!h[key]) h[key] = [];
+  if(!h[key].includes(name)) h[key].push(name);
+  saveHidden(h);
+}
+function restoreExercise(key, name){
+  const h = loadHidden();
+  if(!h[key]) return;
+  h[key] = h[key].filter(n=>n!==name);
+  saveHidden(h);
+}
+function getItems(key){
+  const hidden = loadHidden()[key] || [];
+  const base = SESSIONS[key].items.filter(it=> it.type!=="ex" || !hidden.includes(it.name));
+  const custom = loadCustomExercises()[key] || [];
+  return base.concat(custom);
+}
+function addCustomExercise(key, ex){
+  const all = loadCustomExercises();
+  if(!all[key]) all[key] = [];
+  all[key].push(Object.assign({type:"ex", custom:true}, ex));
+  saveCustomExercises(all);
+}
+function removeCustomExercise(key, name){
+  const all = loadCustomExercises();
+  if(!all[key]) return;
+  all[key] = all[key].filter(e=>e.name!==name);
+  saveCustomExercises(all);
+}
+function showAddExerciseForm(sessionKey, onAdded){
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = `
+    <div class="modal-card">
+      <div class="modal-msg">Add Exercise to ${sessionKey}</div>
+      <label class="field-label">Name</label>
+      <input type="text" id="newExName" class="field-input" placeholder="e.g. Cable Crossover">
+      <label class="field-label">Sets</label>
+      <input type="number" id="newExSets" class="field-input" placeholder="3" min="1" max="10">
+      <label class="field-label">Reps</label>
+      <input type="text" id="newExReps" class="field-input" placeholder="e.g. 10-15">
+      <label class="field-label">Tempo (optional)</label>
+      <input type="text" id="newExTempo" class="field-input" placeholder="e.g. 3-1-1-1">
+      <label class="field-label">Muscle Group</label>
+      <select id="newExMuscle" class="field-input">
+        ${VOLUME_ORDER.map(m=>`<option value="${m}">${m}</option>`).join("")}
+        <option value="Other">Other</option>
+      </select>
+      <label class="field-label">Notes (optional)</label>
+      <textarea id="newExTech" class="field-input" style="min-height:50px; resize:vertical;" placeholder="Any cues for yourself"></textarea>
+      <div class="modal-actions">
+        <button class="modal-btn modal-cancel" data-cancel>Cancel</button>
+        <button class="modal-btn" style="background:var(--orange); color:#1A0D00;" data-saveex>Add</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector("[data-cancel]").addEventListener("click", ()=>overlay.remove());
+  overlay.addEventListener("click", (e)=>{ if(e.target===overlay) overlay.remove(); });
+  overlay.querySelector("[data-saveex]").addEventListener("click", ()=>{
+    const name = document.getElementById("newExName").value.trim();
+    const sets = Math.max(1, parseInt(document.getElementById("newExSets").value)||3);
+    const reps = document.getElementById("newExReps").value.trim() || "-";
+    const tempo = document.getElementById("newExTempo").value.trim() || null;
+    const muscle = document.getElementById("newExMuscle").value;
+    const tech = document.getElementById("newExTech").value.trim() || "No notes added.";
+    if(!name){ toast("Give it a name first"); return; }
+    const exObj = {name, sets, reps, tempo, extra:null, status:null, muscle, tech};
+    addCustomExercise(sessionKey, exObj);
+    overlay.remove();
+    onAdded(exObj);
+  });
+}
 const FREQ_NOTE = "My suggestion is two days on, one day off. Occasionally if you're feeling great, two days on, one day off, three days on";
 const UNIT = "lbs";
 
@@ -420,17 +530,17 @@ function lastNonWarmupValue(sessionKey, exName, setIndex, beforeIndex){
     const sets = arr[i].entries[exName];
     if(!sets) continue;
     const s = sets[setIndex];
-    if(s && s.w!=="" && s.r!=="" && !s.warmup) return s;
+    if(s && s.w!=="" && s.r!=="" && !s.warmup && !s.skip) return s;
   }
   return null;
 }
 function ensureDraft(sessionKey){
   if(draft[sessionKey]) return draft[sessionKey];
   const entries = {};
-  SESSIONS[sessionKey].items.forEach(it=>{
+  getItems(sessionKey).forEach(it=>{
     if(it.type!=="ex") return;
     const n = it.sets || 1;
-    entries[it.name] = Array.from({length:n}, ()=>({w:"", r:"", rir:""}));
+    entries[it.name] = Array.from({length:n}, ()=>({w:"", r:"", rir:"", warmup:false, skip:false}));
   });
   draft[sessionKey] = {date:new Date().toISOString(), entries, notes:""};
   saveJSON(DRAFT_KEY, draft);
@@ -673,14 +783,14 @@ function exportPDF(){
 }
 
 function exportCSV(){
-  const rows = [["Date","Session","Exercise","Set","Weight ("+UNIT+")","Reps","RIR","Warmup","Notes"]];
+  const rows = [["Date","Session","Exercise","Set","Weight ("+UNIT+")","Reps","RIR","Warmup","Skipped","Notes"]];
   Object.keys(history).forEach(key=>{
     (history[key]||[]).forEach(entry=>{
       const dateStr = new Date(entry.date).toISOString().slice(0,16).replace("T"," ");
       Object.entries(entry.entries).forEach(([exName, sets])=>{
         sets.forEach((set,i)=>{
-          if(set.w==="" || set.r==="") return;
-          rows.push([dateStr, key, exName, i+1, set.w, set.r, set.rir||"", set.warmup?"yes":"no", entry.notes||""]);
+          if(set.w==="" && set.r==="" && !set.warmup && !set.skip) return;
+          rows.push([dateStr, key, exName, i+1, set.w, set.r, set.rir||"", set.warmup?"yes":"no", set.skip?"yes":"no", entry.notes||""]);
         });
       });
     });
@@ -809,7 +919,7 @@ function renderWorkoutForm(key, mode, index){
   else if(isEdit){ data = ensureEditBuffer(key, index); }
   else { data = JSON.parse(JSON.stringify(history[key][index])); if(data.notes===undefined) data.notes=""; }
 
-  const rows = s.items.map(it=>{
+  const rows = getItems(key).map(it=>{
     if(it.type==="note"){
       return `<div class="ex-card" style="padding:12px 14px; font-size:12.5px; color:var(--text-dim); font-style:italic;">${it.text}</div>`;
     }
@@ -821,10 +931,18 @@ function renderWorkoutForm(key, mode, index){
     const holdBtn = (isLive && secMatch) ? `<button class="hold-btn" data-hold="${secMatch[1]}" data-holdname="${it.name}">Start ${secMatch[1]}s Hold</button>` : "";
 
     const entrySets = data.entries[it.name] || [];
+    const prescribedCount = it.sets || 1;
     const trendPoints = getExerciseTrend(key, it.name, 10);
     const trendHtml = trendPoints.length>=2
       ? `<details class="ex-note"><summary>Progress Trend (est. 1RM)</summary>${trendSVG(trendPoints)}</details>`
       : "";
+    const noteVal = getExerciseNote(key, it.name);
+    const settingNoteHtml = !isView
+      ? `<details class="ex-note"${noteVal?" open":""}>
+          <summary>Equipment / Setup Notes${noteVal?" &middot; saved":""}</summary>
+          <textarea class="ex-setting-note" data-notekey="${it.name}" placeholder="e.g. seat height 4, pad position 2, pin on 6">${noteVal}</textarea>
+        </details>`
+      : (noteVal ? `<details class="ex-note"><summary>Equipment / Setup Notes</summary><p>${noteVal}</p></details>` : "");
 
     const setRows = entrySets.map((set, i)=>{
       let lastLabel = "&ndash;";
@@ -833,22 +951,29 @@ function renderWorkoutForm(key, mode, index){
         lastLabel = (lastSet && lastSet.w!=="" && lastSet.r!=="") ? `${lastSet.w}${UNIT}&times;${lastSet.r}` : "&ndash;";
       }
       const isWU = !!set.warmup;
+      const isSkip = !!set.skip;
+      const stateClass = isSkip ? " is-skip" : (isWU ? " is-warmup" : "");
+      const labelText = isSkip ? "SKIP" : (isWU ? "WARM" : "SET "+(i+1));
+      const removeBtn = (!isView && i>=prescribedCount)
+        ? `<button class="set-remove" data-removeex="${it.name}" data-removeidx="${i}">&times;</button>` : "";
       return `
-      <div class="set-row${isWU ? " is-warmup" : ""}">
-        <button class="set-label${isWU ? " is-warmup" : ""}" data-warmup="${it.name}" data-warmupset="${i}" ${isView ? "disabled" : ""}>${isWU ? "WARM" : "SET "+(i+1)}</button>
+      <div class="set-row${stateClass}">
+        <button class="set-label${stateClass}" data-warmup="${it.name}" data-warmupset="${i}" ${isView ? "disabled" : ""}>${labelText}</button>
         <div class="set-inputs">
-          <input type="number" inputmode="decimal" placeholder="${UNIT}" enterkeyhint="next" ${isView ? "disabled" : ""}
+          <input type="number" inputmode="decimal" placeholder="${UNIT}" enterkeyhint="next" ${isView||isSkip ? "disabled" : ""}
             data-ex="${it.name}" data-set="${i}" data-field="w" value="${set.w}">
           <span class="set-x">&times;</span>
-          <input type="number" inputmode="numeric" placeholder="reps" enterkeyhint="next" ${isView ? "disabled" : ""}
+          <input type="number" inputmode="numeric" placeholder="reps" enterkeyhint="next" ${isView||isSkip ? "disabled" : ""}
             data-ex="${it.name}" data-set="${i}" data-field="r" value="${set.r}">
           <span class="rir-tag">RIR</span>
-          <input type="number" inputmode="numeric" placeholder="0-5" min="0" max="5" class="rir-input" enterkeyhint="${i===entrySets.length-1?'done':'next'}" ${isView ? "disabled" : ""}
+          <input type="number" inputmode="numeric" placeholder="0-5" min="0" max="5" class="rir-input" enterkeyhint="${i===entrySets.length-1?'done':'next'}" ${isView||isSkip ? "disabled" : ""}
             data-ex="${it.name}" data-set="${i}" data-field="rir" value="${set.rir||''}">
         </div>
         ${isLive ? `<span class="set-last">LAST<br>${lastLabel}</span><span class="set-badge" id="badge-${cssSafe(it.name)}-${i}"></span>` : ""}
+        ${removeBtn}
       </div>`;
     }).join("");
+    const addSetBtn = !isView ? `<button class="add-set-btn" data-addset="${it.name}">+ Add Set</button>` : "";
 
     return `
     <div class="ex-card">
@@ -858,8 +983,10 @@ function renderWorkoutForm(key, mode, index){
         ${holdBtn}
         <details class="ex-note"><summary>Technique Cue</summary><p>${it.tech}</p></details>
         ${trendHtml}
+        ${settingNoteHtml}
       </div>
       ${setRows}
+      ${!isView ? `<div class="ex-foot">${addSetBtn}<button class="remove-ex-btn" data-removeexercise="${key}|${it.name}|${it.custom?1:0}">${it.custom ? "Remove" : "Hide"}</button></div>` : ""}
     </div>`;
   }).join("");
 
@@ -888,13 +1015,16 @@ function renderWorkoutForm(key, mode, index){
       <p>Tempo = 4 numbers in seconds: <code>Eccentric-BottomPause-Concentric-TopPause</code>.<br>
       Example <code>4-2-1-1</code>: lower the weight for 4s, pause 2s at the bottom, lift for 1s, hold 1s at the top.</p>
     </details>
-    ${isView
-      ? (data.notes ? `<div class="notes-block"><label>Session Notes</label><div class="notes-readonly">${data.notes}</div></div>` : "")
-      : `<div class="notes-block">
-          <label>Session Notes</label>
-          <textarea id="sessionNotes" placeholder="How did it feel? Anything to remember for next time?">${data.notes||""}</textarea>
-        </div>`}
-    <div class="ex-list" style="${isView ? "padding-bottom:110px;" : ""}">${rows}</div>
+    ${data.notes ? `<div class="notes-block"><label>Session Notes (legacy)</label><div class="notes-readonly">${data.notes}</div></div>` : ""}
+    <div class="ex-list" style="${isView ? "padding-bottom:110px;" : ""}">
+      ${rows}
+      ${(!isView && (loadHidden()[key]||[]).length) ? `
+      <details class="hidden-ex-block">
+        <summary>Hidden Exercises (${(loadHidden()[key]||[]).length})</summary>
+        ${(loadHidden()[key]||[]).map(n=>`<div class="hidden-ex-row"><span>${n}</span><button data-restoreex="${key}|${n}">Restore</button></div>`).join("")}
+      </details>` : ""}
+      ${!isView ? `<button class="add-ex-btn" data-addexercise="${key}">+ Add Exercise to ${key}</button>` : ""}
+    </div>
     <div class="footer-bar-wrap">
       <div class="footer-bar">
         ${isLive
@@ -934,7 +1064,6 @@ function renderWorkoutForm(key, mode, index){
   } else if(isEdit){
     app.querySelector("[data-canceledit]").addEventListener("click", ()=>{ editBuffer=null; view={type:"history", session:key}; render(); });
     app.querySelector("[data-save]").addEventListener("click", ()=>{
-      data.notes = document.getElementById("sessionNotes").value;
       history[key][index] = data;
       saveJSON(HIST_KEY, history);
       editBuffer = null;
@@ -957,23 +1086,74 @@ function renderWorkoutForm(key, mode, index){
     app.querySelectorAll('[data-warmup]').forEach(btn=>{
       btn.addEventListener("click", ()=>{
         const ex = btn.dataset.warmup, si = +btn.dataset.warmupset;
-        data.entries[ex][si].warmup = !data.entries[ex][si].warmup;
+        const set = data.entries[ex][si];
+        if(!set.warmup && !set.skip){ set.warmup = true; }
+        else if(set.warmup){ set.warmup = false; set.skip = true; }
+        else { set.skip = false; }
         if(isLive) scheduleSave();
         render();
       });
     });
-  }
-  const notesEl = document.getElementById("sessionNotes");
-  if(notesEl){
-    notesEl.addEventListener("input", (e)=>{
-      data.notes = e.target.value;
-      if(isLive) scheduleSave();
+    app.querySelectorAll('[data-addset]').forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        const ex = btn.dataset.addset;
+        data.entries[ex].push({w:"", r:"", rir:"", warmup:false, skip:false});
+        if(isLive) scheduleSave();
+        render();
+      });
     });
+    app.querySelectorAll('[data-removeex]').forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        const ex = btn.dataset.removeex, si = +btn.dataset.removeidx;
+        data.entries[ex].splice(si, 1);
+        if(isLive) scheduleSave();
+        render();
+      });
+    });
+    app.querySelectorAll('[data-removeexercise]').forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        const [exSession, exName, customFlag] = btn.dataset.removeexercise.split("|");
+        const isCustom = customFlag === "1";
+        const msg = isCustom
+          ? `Remove "${exName}" from your ${exSession} plan? Past logged history for it stays intact.`
+          : `Hide "${exName}" from your ${exSession} plan? You can restore it anytime from "Hidden Exercises" below. Past history stays intact.`;
+        showConfirm(msg, ()=>{
+          if(isCustom) removeCustomExercise(exSession, exName);
+          else hideExercise(exSession, exName);
+          delete data.entries[exName];
+          if(isLive) scheduleSave();
+          render();
+        }, isCustom ? "Remove" : "Hide");
+      });
+    });
+    app.querySelectorAll('[data-restoreex]').forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        const [exSession, exName] = btn.dataset.restoreex.split("|");
+        restoreExercise(exSession, exName);
+        render();
+      });
+    });
+    const addExBtn = app.querySelector('[data-addexercise]');
+    if(addExBtn){
+      addExBtn.addEventListener("click", ()=>{
+        showAddExerciseForm(key, (exObj)=>{
+          data.entries[exObj.name] = Array.from({length:exObj.sets}, ()=>({w:"", r:"", rir:"", warmup:false, skip:false}));
+          if(isLive) scheduleSave();
+          toast(`Added "${exObj.name}"`);
+          render();
+        });
+      });
+    }
   }
+  app.querySelectorAll('.ex-setting-note').forEach(ta=>{
+    ta.addEventListener("input", ()=>{
+      setExerciseNote(key, ta.dataset.notekey, ta.value);
+    });
+  });
 
   if(isLive){
     updateProgressPill(key);
-    s.items.filter(i=>i.type==="ex").forEach(it=>{
+    getItems(key).filter(i=>i.type==="ex").forEach(it=>{
       const n = it.sets || 1;
       for(let i=0;i<n;i++){ updateBadge(key, it.name, i); }
     });
@@ -986,6 +1166,7 @@ function updateBadge(key, exName, setIndex){
   const el = document.getElementById(`badge-${cssSafe(exName)}-${setIndex}`);
   if(!el) return;
   const set = draft[key].entries[exName][setIndex];
+  if(set.skip){ el.innerHTML = `<span style="color:var(--text-faint);">SKIP</span>`; el.title="skipped - not tracked"; return; }
   if(set.warmup){ el.innerHTML = `<span style="color:var(--text-faint);">WU</span>`; el.title="warmup - not tracked"; return; }
   const lastSet = lastNonWarmupValue(key, exName, setIndex);
   const res = compare(set.w, set.r, lastSet);
@@ -998,10 +1179,10 @@ function updateProgressPill(key){
   const pill = document.getElementById("progressPill");
   if(!pill) return;
   let up=0, total=0;
-  const s = SESSIONS[key];
-  s.items.filter(i=>i.type==="ex").forEach(it=>{
+  getItems(key).filter(i=>i.type==="ex").forEach(it=>{
+    if(!draft[key].entries[it.name]) return;
     draft[key].entries[it.name].forEach((set,i)=>{
-      if(set.w==="" || set.r==="" || set.warmup) return;
+      if(set.w==="" || set.r==="" || set.warmup || set.skip) return;
       total++;
       const lastSet = lastNonWarmupValue(key, it.name, i);
       const res = compare(set.w, set.r, lastSet);
@@ -1018,12 +1199,12 @@ function computeWeeklyVolume(){
   const totals = {};
   Object.keys(SESSIONS).forEach(key=>{
     const exMuscle = {};
-    SESSIONS[key].items.forEach(it=>{ if(it.type==="ex") exMuscle[it.name] = it.muscle || "Other"; });
+    getItems(key).forEach(it=>{ if(it.type==="ex") exMuscle[it.name] = it.muscle || "Other"; });
     (history[key]||[]).forEach(entry=>{
       if(new Date(entry.date).getTime() < cutoff) return;
       Object.entries(entry.entries).forEach(([exName, sets])=>{
         const muscle = exMuscle[exName] || "Other";
-        const n = sets.filter(s=>s.w!==""&&s.r!=="" && !s.warmup).length;
+        const n = sets.filter(s=>s.w!==""&&s.r!=="" && !s.warmup && !s.skip).length;
         if(n>0) totals[muscle] = (totals[muscle]||0) + n;
       });
     });
@@ -1128,7 +1309,7 @@ function checkDeloadSignal(key){
     let up=0, total=0;
     Object.keys(entry.entries).forEach(exName=>{
       entry.entries[exName].forEach((set,i)=>{
-        if(set.w==="" || set.r==="" || set.warmup) return;
+        if(set.w==="" || set.r==="" || set.warmup || set.skip) return;
         total++;
         const priorSet = lastNonWarmupValue(key, exName, i, idx);
         const cmp = compare(set.w, set.r, priorSet);
@@ -1141,18 +1322,22 @@ function checkDeloadSignal(key){
 }
 
 function computeSessionResults(key, entry){
-  const s = SESSIONS[key];
   let up=0, same=0, down=0, total=0;
   const exercises = [];
-  s.items.filter(i=>i.type==="ex").forEach(it=>{
+  getItems(key).filter(i=>i.type==="ex").forEach(it=>{
     const sets = entry.entries[it.name] || [];
     const setResults = [];
     sets.forEach((set,i)=>{
-      if(set.w==="" || set.r==="") return;
+      if(set.w==="" && set.r==="" && !set.warmup && !set.skip) return;
+      if(set.skip){
+        setResults.push({i, w:set.w, r:set.r, rir:set.rir, cmp:null, skip:true});
+        return;
+      }
       if(set.warmup){
         setResults.push({i, w:set.w, r:set.r, rir:set.rir, cmp:null, warmup:true});
         return;
       }
+      if(set.w==="" || set.r==="") return;
       total++;
       const lastSet = lastNonWarmupValue(key, it.name, i);
       const cmp = compare(set.w, set.r, lastSet);
@@ -1217,9 +1402,10 @@ function renderSummary(){
   const exList = results.exercises.map(ex=>{
     const setLines = ex.sets.map(s=>{
       const cmp = s.cmp;
-      const label = s.warmup ? "WARMUP" : (cmp ? (cmp.icon==="NEW" ? "NEW" : cmp.icon+" "+cmp.label) : "");
-      const color = s.warmup ? "var(--text-faint)" : (cmp ? cmp.color : "var(--text-dim)");
-      return `<div class="summary-set"><span>Set ${s.i+1}: ${s.w}${UNIT} &times; ${s.r}${s.rir!==""&&s.rir!==undefined ? " @RIR"+s.rir : ""}</span><span style="color:${color}; font-weight:700;">${label}</span></div>`;
+      const label = s.skip ? "SKIPPED" : (s.warmup ? "WARMUP" : (cmp ? (cmp.icon==="NEW" ? "NEW" : cmp.icon+" "+cmp.label) : ""));
+      const color = (s.skip || s.warmup) ? "var(--text-faint)" : (cmp ? cmp.color : "var(--text-dim)");
+      const valueStr = s.skip ? "(no data)" : `${s.w}${UNIT} &times; ${s.r}${s.rir!==""&&s.rir!==undefined ? " @RIR"+s.rir : ""}`;
+      return `<div class="summary-set"><span>Set ${s.i+1}: ${valueStr}</span><span style="color:${color}; font-weight:700;">${label}</span></div>`;
     }).join("");
     return `<div class="summary-ex"><div class="summary-ex-name">${ex.name}</div>${setLines}</div>`;
   }).join("");
@@ -1251,7 +1437,7 @@ function renderHistory(key){
   const cards = arr.length ? arr.slice().reverse().map((entry, revIdx)=>{
     const idx = arr.length-1-revIdx;
     const rows = Object.entries(entry.entries).filter(([,sets])=>sets.some(x=>x.w!=="" && x.r!=="")).map(([name,sets])=>{
-      const str = sets.filter(x=>x.w!=="" && x.r!=="").map(x=>`${x.w}&times;${x.r}${x.rir!==""&&x.rir!==undefined ? " @"+x.rir : ""}${x.warmup?" (WU)":""}`).join(", ");
+      const str = sets.filter(x=>x.w!=="" && x.r!=="").map(x=>`${x.w}&times;${x.r}${x.rir!==""&&x.rir!==undefined ? " @"+x.rir : ""}${x.warmup?" (WU)":""}${x.skip?" (skipped)":""}`).join(", ");
       return `<div class="hist-ex-row"><span class="hist-ex-name">${name}</span><span class="hist-ex-sets">${str}</span></div>`;
     }).join("");
     const setCount = Object.values(entry.entries).reduce((a,sets)=>a+sets.filter(x=>x.w!==""&&x.r!=="").length,0);
